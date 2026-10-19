@@ -109,20 +109,7 @@
   </svg>
 </button>
 <!-- 自绘弹窗：替代 prompt()，用于设置盘搜接口地址 -->
-<div class="custom-modal-mask" id="panCfgMask" data-page-node-id="SQ3xmtCW1iieRWLvLIn706">
-  <div class="custom-modal" data-page-node-id="mTftoPR7G2CK0rMFkqbsCu">
-    <div class="custom-modal-title" data-page-node-id="2jASCDpCrUl2m0zhG2nmlc">盘搜设置</div>
-    <input class="custom-modal-input" id="panCfgInput" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" data-page-node-id="AXlOFbalEUYo4qlPD3PZBU">
-    <div class="pan-type-cfg" id="panTypeCfg" style="display:none" data-page-node-id="vgqT030ssmZTV9Bip140eb">
-      <div class="pan-type-cfg-label" data-page-node-id="aoZnXpZbMMUOXF5GSFHGXy"><span data-page-node-id="fYYTss3pZOHU5E4tf4fYK3">网盘类型（多选）</span><button type="button" class="pan-type-all" id="panTypeAll" data-page-node-id="E0Ar8Ala5qqc101P2JzMoI">全选</button></div>
-      <div class="pan-type-grid" id="panTypeGrid" data-page-node-id="5Uu476UkyVmqrGtSsYtZ4B"></div>
-    </div>
-    <div class="custom-modal-actions" data-page-node-id="PNRSYOObq7odTLCO4eiDZr">
-      <button class="custom-modal-btn" id="panCfgCancel" data-page-node-id="BDgChylfaCGQ3fvGsuPhqe">取消</button>
-      <button class="custom-modal-btn accent" id="panCfgOk" data-page-node-id="l5l01xLOVfUG6Y12FAosP1">确定</button>
-    </div>
-  </div>
-</div>
+id="panCfgMask"><div class="custom-modal" style="max-width:680px;width:calc(100vw - 32px)"><div class="custom-modal-title">盘搜设置</div><input class="custom-modal-input" id="panCfgInput" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"><div class="pan-url-history" id="panUrlHistory"><div class="pan-url-item">https://so.252035.xyz</div></div><div class="pan-source-cfg" id="panSourceCfg" style="display:none"><div class="pan-source-tabs" id="panSourceTabs"><button type="button" class="pan-source-tab on" data-pane="channels">TG频道 <em id="panChannelCount">0 / 0</em></button><button type="button" class="pan-source-tab" data-pane="plugins">搜索插件 <em id="panPluginCount">0 / 0</em></button><button type="button" class="pan-source-tab" data-pane="types">网盘类型 <em id="panTypeCount">0 / 0</em></button></div><div class="pan-source-head"><span class="pan-source-title" id="panSourceTitle">TG 频道配置</span><div class="pan-source-head-actions"><button type="button" class="pan-source-action" id="panSourceRefresh">刷新</button><button type="button" class="pan-source-action" id="panSourceAll">全选</button></div></div><div class="pan-source-list" id="panSourceList"></div></div><div class="custom-modal-actions" style="justify-content:space-between"><button class="custom-modal-btn" id="panCfgReset" type="button">恢复默认</button><div style="display:flex;gap:8px"><button class="custom-modal-btn" id="panCfgCancel" type="button">取消</button><button class="custom-modal-btn accent" id="panCfgOk" type="button">确定</button></div></div></div></div><div class="custom-modal-mask" id="mipanCfgMask"><div class="custom-modal" style="max-width:520px;width:calc(100vw - 32px)"><div class="custom-modal-title">觅搜设置</div><div class="pan-source-cfg" style="display:block"><div class="pan-source-head"><span class="pan-source-title">网盘分类</span><div class="pan-source-head-actions"><button type="button" class="pan-source-action" id="mipanTypeAll">全选</button></div></div><div class="pan-source-list" id="mipanTypeList"></div></div><div class="custom-modal-actions"><button class="custom-modal-btn" id="mipanCfgReset" type="button">恢复默认</button><button class="custom-modal-btn" id="mipanCfgCancel" type="button">取消</button><button class="custom-modal-btn accent" id="mipanCfgOk" type="button">确定</button></div></div></div><div class="custom-modal-mask" 
 <!-- 站源域名设置弹窗 -->
 <div class="custom-modal-mask" id="siteDomainMask" data-page-node-id="nT4P2GjDL9NNO9C34xSPgM">
   <div class="custom-modal" style="max-width:380px" data-page-node-id="jeiaLoXrgU05CwAoerxKqM">
@@ -141,23 +128,6 @@
       <button type="button" class="custom-modal-btn" id="overseasNetRefresh" style="flex-shrink:0;height:32px;padding:0 12px;font-size:12px">重新检测</button>
     </div>
     
-    <!-- 人人登录 -->
-    <div id="renrenLoginBlock" style="display:none;margin:0 0 12px;padding:12px;border-radius:12px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10)">
-      <div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:6px">人人站登录</div>
-      <div id="renrenLoginStatus" style="font-size:11px;color:rgba(255,255,255,.65);margin-bottom:8px;line-height:1.4">未登录 · 资源页需会员时请在此登录</div>
-      <input class="custom-modal-input" id="renrenUser" type="text" placeholder="用户名 / 手机号" autocomplete="username" style="margin-bottom:8px;width:100%;box-sizing:border-box" />
-      <input class="custom-modal-input" id="renrenPass" type="password" placeholder="密码" autocomplete="current-password" style="margin-bottom:8px;width:100%;box-sizing:border-box" />
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-        <input class="custom-modal-input" id="renrenVdcode" type="text" placeholder="验证码" autocomplete="off" autocapitalize="characters" style="flex:1;min-width:0;margin:0;box-sizing:border-box;text-transform:uppercase" />
-        <img id="renrenCaptchaImg" alt="验证码" title="点击刷新" style="height:40px;width:118px;flex-shrink:0;border-radius:8px;background:rgba(255,255,255,.12);cursor:pointer;object-fit:contain" />
-      </div>
-      <div style="font-size:11px;color:rgba(255,255,255,.5);margin:-4px 0 8px">点图刷新验证码 · 与账号密码一并提交</div>
-      <textarea class="custom-modal-input" id="renrenCookie" rows="2" placeholder="可选：直接粘贴 Cookie（DedeUserID=...; ...）" style="height:auto;min-height:56px;margin-bottom:8px;width:100%;box-sizing:border-box;font-size:12px;resize:vertical"></textarea>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="custom-modal-btn accent" id="renrenLoginBtn" type="button" style="flex:1;min-width:90px">登录</button>
-        <button class="custom-modal-btn" id="renrenLogoutBtn" type="button" style="flex:0 0 auto">退出</button>
-      </div>
-    </div>
     <div style="font-size:12px;color:var(--muted);margin:4px 0 8px;line-height:1.45" data-page-node-id="FaIjtHmIDnALv1YxzTTEAX">站源域名 · 每行一个域名（含 https://），自上而下优先。保存后立即用新域名访问当前站。<br data-page-node-id="dV8Cc4xuUkEN96jA5uLqiN">也可点「监控同步」从 site.920410.xyz 拉取最新可用域名（会写入输入框，需再点保存）。</div>
     <textarea class="custom-modal-input" id="siteDomainInput" rows="5" style="height:auto;min-height:110px;padding:10px 12px;resize:vertical;font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.45" placeholder="https://example.com&#10;https://backup.example.com" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
     <div class="custom-modal-actions" style="justify-content:space-between;flex-wrap:wrap;gap:8px" data-page-node-id="fJ5FVM3fs30Mdg8mvtfPKU">

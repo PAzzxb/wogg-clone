@@ -201,7 +201,7 @@ let historyList = JSON.parse(localStorage.getItem(STORAGE_KEY_HIST) || '[]');
 let searchKwHistory = (()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEY_SEARCH_HIST)||'[]')}catch(e){return []}})();
 
 if(window.fongmiBridge||window.fm)document.documentElement.classList.add('fm-native');
-const SITES=[{id:'wanou',name:'玩偶',domains:['https://woggpan.888484.xyz','https://woggpan.xxooo.cf','https://www.wogg.net','https://wogg.xxooo.cf'],listSelector:'.module-item',searchListSelector:'.module-search-item',detailPanSelector:'.module-row-info p',categoryUrl:'/vodshow/{categoryId}--------{page}---.html',searchUrl:'/vodsearch/-------------.html?wd={keyword}&page={page}',cats:[['history','最近'],['44','臻彩'],['1','电影'],['2','电视剧'],['3','动漫'],['4','综艺'],['5','音乐'],['6','短剧'],['46','纪录片']],catGroups:{'1':[['1','全部'],['1---喜剧','喜剧'],['1---爱情','爱情'],['1---动作','动作'],['1---科幻','科幻'],['1---剧情','剧情'],['1---恐怖','恐怖'],['1---悬疑','悬疑'],['1---犯罪','犯罪'],['1---惊悚','惊悚'],['1---战争','战争'],['1---古装','古装'],['1---奇幻','奇幻']],'2':[['2','全部'],['2---古装','古装'],['2---都市','都市'],['2---家庭','家庭'],['2---喜剧','喜剧'],['2---悬疑','悬疑'],['2---犯罪','犯罪'],['2---青春偶像','青春偶像'],['2---剧情','剧情'],['2---动作','动作']],'3':[['3','全部'],['3---热血','热血'],['3---搞笑','搞笑'],['3---校园','校园'],['3---冒险','冒险'],['3---科幻','科幻'],['3---推理','推理'],['3---情感','情感'],['3---动作','动作']],'4':[['4','全部'],['4---选秀','选秀'],['4---综艺','综艺'],['4---音乐','音乐'],['4---美食','美食'],['4---游戏','游戏']]}},{id:'muou',name:'木偶',domains:['https://www.muou.site','https://www.muou.asia','https://666.666291.xyz','https://123.666291.xyz'],listSelector:'#main .module-item',searchListSelector:'.module-search-item',detailPanSelector:'.module-row-info p',cats:[['25','臻选'],['1','电影'],['2','电视剧'],['3','动漫'],['4','纪录片'],['29','综艺'],['30','原盘']]},{id:'shandian',name:'闪电',domains:['http://sd.sduc.site','http://shandian.blog'],listSelector:'#main .module-item',searchListSelector:'.module-search-item',detailPanSelector:'.module-row-info p',categoryUrl:'/index.php/vod/show/id/{categoryId}/page/{page}.html',searchUrl:'/index.php/vod/search/page/{page}/wd/{keyword}.html',cats:[['1','电影'],['2','剧集'],['3','综艺'],['4','动漫'],['30','短剧']]},{id:'duoduo',name:'多多',domains:['https://tv.yydsys.cc','https://yydsys.de5.net','https://tv.214521.xyz','https://tv.yydsys.top'],listSelector:'.module-item',searchListSelector:'.module-search-item',detailPanSelector:'.module-row-info p',cats:[['1','电影'],['2','剧集'],['3','综艺'],['4','动漫'],['5','短剧'],['20','纪录']]},{id:'zhainan',name:'至臻',domains:['https://v.time1080.xyz'],listSelector:'a.card,.grid .card',searchListSelector:'a.card,.grid .card',detailPanSelector:'.res-list a,.weui-cells a,a[href]',categoryUrl:'/c/{categoryId}.html',searchUrl:'/s.php?wd={keyword}',cats:[['history','最近'],['电影','电影'],['电视剧','电视剧'],['动漫','动漫'],['综艺','综艺'],['短剧','短剧']]},{id:'huban',name:'米字',domains:['https://mizixing.com'],listSelector:'article.excerpt',searchListSelector:'article.excerpt',detailPanSelector:'a[href*="pan.quark"],a[href*="pan.baidu"],a[href*="pan.xunlei"],a[href*="aliyundrive"],a[href*="115.com"],a[href*="quark.cn"]',categoryUrl:'/category/{categoryId}/page/{page}/',searchUrl:'/?s={keyword}',cats:[['电影','电影'],['电视剧','电视剧'],['动漫','动漫'],['综艺节目','综艺'],['纪录片','纪录片'],['音乐MTV','音乐']]},{id:'huajuan',name:'花卷',domains:['https://www.hjzhencai.top'],listSelector:'.module-item',searchListSelector:'.module-card-item',detailPanSelector:'a.down-card-url',searchUrl:'/index.php/vod/search/page/{page}/wd/{keyword}.html',cats:[['22','高帧'],['1','电影'],['2','剧集'],['3','动漫'],['23','AI短剧'],['21','综艺']]},{id:'dyyjv',name:'云集',type:'flarum',domains:['https://bbs.dyyjv.com'],pageSize:20,categoryUrl:'/api/discussions?filter%5Btag%5D={categoryId}&page%5Blimit%5D=20&page%5Boffset%5D={offset}&include=firstPost',searchUrl:'/?q={keyword}',cats:[['Movie','电影'],['TVplay','剧集'],['dongman','动漫'],['Variety','综艺'],['duanju','短剧']]},{id:'renren',name:'人人',domains:['https://www.rrdynb.com'],listSelector:'#movielist li',searchListSelector:'#movielist li,.stui-vodlist li',categoryUrl:'/plus/list.php?tid={categoryId}&PageNo={page}',searchUrl:'/plus/search.php?q={keyword}',cats:[['2','电影'],['6','剧集'],['13','动漫'],['10','老电影']]},{id:'hdhive',name:'鸟巢',type:'hdhive',catalogUrl:'https://gh-proxy.com/https://raw.githubusercontent.com/longmingfudi/voxlinepg/refs/heads/main/catalog.json',domains:['https://gh-proxy.com','https://raw.githubusercontent.com','https://cdn.jsdelivr.net'],cats:[['history','最近'],['movie','电影'],['tv','剧集'],['anime','动漫'],['variety','综艺'],['quark','夸克'],['115','115'],['ali','阿里'],['tianyi','天翼'],['baidu','百度']],pageSize:24},{id:'fangkong',name:'放空',hidden:true,domains:['https://fangkong.cc'],listSelector:'.list a.item',searchListSelector:'.list a.item',detailPanSelector:'a[href*="pan.quark"],a[href*="pan.baidu"],a[href*="pan.xunlei"],a[href*="aliyundrive"],a[href*="115.com"],a[href*="quark.cn"],a[href*="caiyun"]',categoryUrl:'/',searchUrl:'/s/{keyword}.html',listStyle:'list',cats:[['home','最近']]}, {id:'ouge',name:'讴歌',domains:['https://woog.nxog.eu.org','https://woog.430520.xyz','https://woog.nxog.fun'],listSelector:'#main .module-item',searchListSelector:'.module-search-item',detailPanSelector:'.module-row-info p',cats:[['1','电影'],['2','电视剧'],['3','动漫'],['4','综艺'],['5','短剧'],['21','综合']]},
+const SITES=[{id:'wanou',name:'玩偶',domains:['https://woggpan.888484.xyz','https://woggpan.xxooo.cf','https://www.wogg.net','https://wogg.xxooo.cf'],listSelector:'.module-item',searchListSelector:'.module-search-item',detailPanSelector:'.module-row-info p',categoryUrl:'/vodshow/{categoryId}--------{page}---.html',searchUrl:'/vodsearch/-------------.html?wd={keyword}&page={page}',cats:[['history','最近'],['44','臻彩'],['1','电影'],['2','电视剧'],['3','动漫'],['4','综艺'],['5','音乐'],['6','短剧'],['46','纪录片']],catGroups:{'1':[['1','全部'],['1---喜剧','喜剧'],['1---爱情','爱情'],['1---动作','动作'],['1---科幻','科幻'],['1---剧情','剧情'],['1---恐怖','恐怖'],['1---悬疑','悬疑'],['1---犯罪','犯罪'],['1---惊悚','惊悚'],['1---战争','战争'],['1---古装','古装'],['1---奇幻','奇幻']],'2':[['2','全部'],['2---古装','古装'],['2---都市','都市'],['2---家庭','家庭'],['2---喜剧','喜剧'],['2---悬疑','悬疑'],['2---犯罪','犯罪'],['2---青春偶像','青春偶像'],['2---剧情','剧情'],['2---动作','动作']],'3':[['3','全部'],['3---热血','热血'],['3---搞笑','搞笑'],['3---校园','校园'],['3---冒险','冒险'],['3---科幻','科幻'],['3---推理','推理'],['3---情感','情感'],['3---动作','动作']],'4':[['4','全部'],['4---选秀','选秀'],['4---综艺','综艺'],['4---音乐','音乐'],['4---美食','美食'],['4---游戏','游戏']]}},{id:'muou',name:'木偶',domains:['https://www.muou.site','https://www.muou.asia','https://666.666291.xyz','https://123.666291.xyz'],listSelector:'#main .module-item',searchListSelector:'.module-search-item',detailPanSelector:'.module-row-info p',cats:[['25','臻选'],['1','电影'],['2','电视剧'],['3','动漫'],['4','纪录片'],['29','综艺'],['30','原盘']]},{id:'shandian',name:'闪电',domains:['http://sd.sduc.site','http://shandian.blog'],listSelector:'#main .module-item',searchListSelector:'.module-search-item',detailPanSelector:'.module-row-info p',categoryUrl:'/index.php/vod/show/id/{categoryId}/page/{page}.html',searchUrl:'/index.php/vod/search/page/{page}/wd/{keyword}.html',cats:[['1','电影'],['2','剧集'],['3','综艺'],['4','动漫'],['30','短剧']]},{id:'duoduo',name:'多多',domains:['https://tv.yydsys.cc','https://yydsys.de5.net','https://tv.214521.xyz','https://tv.yydsys.top'],listSelector:'.module-item',searchListSelector:'.module-search-item',detailPanSelector:'.module-row-info p',cats:[['1','电影'],['2','剧集'],['3','综艺'],['4','动漫'],['5','短剧'],['20','纪录']]},{id:'zhainan',name:'至臻',domains:['https://v.time1080.xyz'],listSelector:'a.card,.grid .card',searchListSelector:'a.card,.grid .card',detailPanSelector:'.res-list a,.weui-cells a,a[href]',categoryUrl:'/c/{categoryId}.html',searchUrl:'/s.php?wd={keyword}',cats:[['history','最近'],['电影','电影'],['电视剧','电视剧'],['动漫','动漫'],['综艺','综艺'],['短剧','短剧']]},{id:'huban',name:'米字',domains:['https://mizixing.com'],listSelector:'article.excerpt',searchListSelector:'article.excerpt',detailPanSelector:'a[href*="pan.quark"],a[href*="pan.baidu"],a[href*="pan.xunlei"],a[href*="aliyundrive"],a[href*="115.com"],a[href*="quark.cn"]',categoryUrl:'/category/{categoryId}/page/{page}/',searchUrl:'/?s={keyword}',cats:[['电影','电影'],['电视剧','电视剧'],['动漫','动漫'],['综艺节目','综艺'],['纪录片','纪录片'],['音乐MTV','音乐']]},{id:'huajuan',name:'花卷',domains:['https://www.hjzhencai.top'],listSelector:'.module-item',searchListSelector:'.module-card-item',detailPanSelector:'a.down-card-url',searchUrl:'/index.php/vod/search/page/{page}/wd/{keyword}.html',cats:[['22','高帧'],['1','电影'],['2','剧集'],['3','动漫'],['23','AI短剧'],['21','综艺']]},{id:'dyyjv',name:'云集',type:'flarum',domains:['https://bbs.dyyjv.com'],pageSize:20,categoryUrl:'/api/discussions?filter%5Btag%5D={categoryId}&page%5Blimit%5D=20&page%5Boffset%5D={offset}&include=firstPost',searchUrl:'/?q={keyword}',cats:[['Movie','电影'],['TVplay','剧集'],['dongman','动漫'],['Variety','综艺'],['duanju','短剧']]},{id:'fangkong',name:'放空',hidden:true,domains:['https://fangkong.cc'],listSelector:'.list a.item',searchListSelector:'.list a.item',detailPanSelector:'a[href*="pan.quark"],a[href*="pan.baidu"],a[href*="pan.xunlei"],a[href*="aliyundrive"],a[href*="115.com"],a[href*="quark.cn"],a[href*="caiyun"]',categoryUrl:'/',searchUrl:'/s/{keyword}.html',listStyle:'list',cats:[['home','最近']]}, {id:'ouge',name:'讴歌',domains:['https://woog.nxog.eu.org','https://woog.430520.xyz','https://woog.nxog.fun'],listSelector:'#main .module-item',searchListSelector:'.module-search-item',detailPanSelector:'.module-row-info p',cats:[['1','电影'],['2','电视剧'],['3','动漫'],['4','综艺'],['5','短剧'],['21','综合']]},
 {id:'xb6v',name:'星河',panBlockRE:'6v123\\.com|6v520\\.tv|xb6v\\.com|66ss\\.org',domains:['https://www.xb6v.com','https://www.66ss.org'],listSelector:'li.post',searchListSelector:'li.post',titleSelector:'.article_container h1',noAutoCats:true,searchMethod:'post',searchUrl:'/e/search/so.php',searchBody:'show=title&tempid=1&tbname=article&mid=1&dopost=search&keyboard={keyword}',categoryUrl:'/{categoryId}/index_{page}.html',cats:[['movie','电影'],['dianshiju','剧集'],['donghuapian','动画'],['jilupian','纪录'],['ZongYi','综艺']],catGroups:{movie:[['xijupian','喜剧'],['dongzuopian','动作'],['aiqingpian','爱情'],['kehuanpian','科幻'],['kongbupian','恐怖'],['juqingpian','剧情'],['zhanzhengpian','战争']],dianshiju:[['dianshiju/guoju','国剧'],['dianshiju/rihanju','日韩'],['dianshiju/oumeiju','欧美'],['dianshiju/duanju','短剧']]}},{id:'jinpai',name:'金牌',type:'jinpai',hidden:true,onlineOnly:true,domains:['https://ghw9zwp5.com'],apiBase:'https://ghw9zwp5.com/api/mw-movie',apiHosts:['https://ghw9zwp5.com/api/mw-movie','https://ghw9zwp5.com/mw-movie','https://ady.wxojcopfw.com/mw-movie'],noAutoCats:true,listSelector:'a.content-card',categoryUrl:'/vod/show/id/{categoryId}/page/{page}',cats:[['1','电影'],['2','电视剧'],['3','综艺'],['4','动漫'],['88','短剧']]},{id:'gz360',name:'瓜子',type:'gz360',hidden:true,onlineOnly:true,domains:['https://gz360.tv'],apiBase:'https://api.gudvxty.com',noAutoCats:true,cats:[['p1','热门'],['p5','动漫'],['p62344',''],['p3','电影'],['p4','国产剧'],['p16','短剧'],['p6','综艺'],['p23656','海外剧'],['p26916','儿童']],catGroups:{'p5':[['p5','全部'],['g50','冒险'],['g51','热血'],['g52','搞笑'],['g53','爱情'],['g54','推理'],['g55','竞技'],['g56','益智'],['g57','童话'],['g58','经典'],['g60','奇幻'],['g61','校园'],['g62','励志'],['g63','剧情'],['g64','后宫'],['g65','青春'],['g94','动作'],['g95','喜剧'],['g96','科幻'],['g97','悬疑'],['g98','动画']],'p3':[['p3','全部'],['g1','惊悚'],['g2','悬疑'],['g3','科幻'],['g4','罪案'],['g5','灾难'],['g6','动画'],['g7','古装'],['g8','青春'],['g9','恐怖'],['g10','文艺'],['g11','生活'],['g12','历史'],['g13','励志'],['g66','喜剧'],['g68','冒险'],['g69','纪录片'],['g71','爱情'],['g77','犯罪'],['g82','剧情'],['g83','家庭'],['g84','动作'],['g86','奇幻'],['g87','战争'],['g88','同性'],['g93','武侠']],'p4':[['p4','全部'],['g15','爱情'],['g16','都市'],['g17','家庭'],['g18','生活'],['g19','偶像'],['g20','喜剧'],['g21','历史'],['g22','古装'],['g23','武侠'],['g24','刑侦'],['g25','战争'],['g26','神话'],['g27','谍战'],['g28','宫斗'],['g29','剧情'],['g30','奇幻'],['g31','科幻'],['g32','悬疑'],['g36','犯罪'],['g37','动作']],'p6':[['p6','全部'],['g39','脱口秀'],['g40','真人秀'],['g41','选秀'],['g42','情感'],['g43','访谈'],['g44','时尚'],['g45','晚会'],['g47','益智'],['g48','音乐'],['g49','游戏'],['g75','职场']],'p23656':[['p23656','全部'],['g15','爱情'],['g16','都市'],['g17','家庭'],['g19','偶像'],['g20','喜剧'],['g29','剧情'],['g30','奇幻'],['g31','科幻'],['g32','悬疑'],['g36','犯罪'],['g37','动作']],'p26916':[['p26916','全部'],['g50','冒险'],['g51','热血'],['g52','搞笑'],['g57','童话'],['g58','经典'],['g60','奇幻'],['g61','校园']]}},{id:'huangdou',name:'黄豆',noTmdb:true,type:'huangdou',hidden:true,onlineOnly:true,hideDomain:true,domains:['https://hd.920410.xyz'],apiBase:'https://hd.920410.xyz',noAutoCats:true,cats:[['all','全部'],['yuandou','黄豆原创'],['mod','魔改短剧'],['caibian','擦边短剧'],['zhenren','真人短剧'],['erciyuan','二次元']]},{id:'huangguoai',name:'黄果',noTmdb:true,type:'huangguoai',hidden:true,onlineOnly:true,domains:['https://huangguoai.com'],apiBase:'https://huangguoai.com',noAutoCats:true,cats:[['hot','热门'],['new','最新'],['rank','排行榜'],['ai-duanju','AI成人漫剧短剧'],['ai-manju','AI成人漫剧'],['ai-huanlian','AI换脸'],['ai-mogai','AI魔改'],['tag:dushi','都市'],['tag:xiandai','现代'],['tag:xiaoyuan','校园'],['tag:shunv','熟女'],['tag:haomen','豪门'],['tag:hougong','后宫'],['tag:luanlun','乱伦'],['tag:gufeng','古风'],['tag:qihuan','奇幻'],['tag:zhichang','职场'],['tag:yulequan','娱乐圈'],['tag:tianchong','甜宠'],['tag:nianxia','年下']]},{id:'flickreels',name:'黄雀',type:'flickreels',hidden:true,onlineOnly:true,noTmdb:true,domains:['https://www.flickreels.net'],apiBase:'https://www.flickreels.net',noAutoCats:true,cats:[['home','热门'],['tag:甜宠','甜宠'],['tag:霸总','霸总'],['tag:重生','重生'],['tag:穿越','穿越'],['tag:复仇','复仇'],['tag:都市','都市'],['tag:古装','古装'],['tag:爽剧','爽剧'],['tag:浪漫','浪漫'],['tag:大女主','大女主'],['tag:豪门','豪门']]},{id:'jinguo',name:'禁果',noTmdb:true,type:'jinguo',hidden:true,onlineOnly:true,domains:['https://jinguoduanju.app'],apiBase:'https://jinguoduanju.app',noAutoCats:true,cats:[['heat','热度'],['latest','最新'],['landing','首页推荐'],['nav_all','全部'],['nav_original','原创精品'],['nav_single','单体作品'],['nav_anime','动漫改编'],['nav_movie','影视改编'],['len_multi','多集'],['len_single','单集']]},{id:'duanju',name:'短剧',noTmdb:true,onlineOnly:true,type:'duanju',domains:['https://hd.920410.xyz','https://huangguoai.com','https://www.flickreels.net','https://jinguoduanju.app'],noAutoCats:true,cats:[['hd','黄豆'],['hga','黄果'],['hq','黄雀'],['jg','禁果']],catGroups:{'hd':[['hd:all','全部'],['hd:yuandou','黄豆原创'],['hd:mod','魔改短剧'],['hd:caibian','擦边短剧'],['hd:zhenren','真人短剧'],['hd:erciyuan','二次元']],'hga':[['hga:hot','热门'],['hga:new','最新'],['hga:rank','排行榜'],['hga:ai-duanju','AI成人漫剧短剧'],['hga:ai-manju','AI成人漫剧'],['hga:ai-huanlian','AI换脸'],['hga:ai-mogai','AI魔改'],['hga:tag:dushi','都市'],['hga:tag:xiandai','现代'],['hga:tag:xiaoyuan','校园'],['hga:tag:shunv','熟女'],['hga:tag:haomen','豪门'],['hga:tag:hougong','后宫'],['hga:tag:luanlun','乱伦'],['hga:tag:gufeng','古风'],['hga:tag:qihuan','奇幻'],['hga:tag:zhichang','职场'],['hga:tag:yulequan','娱乐圈'],['hga:tag:tianchong','甜宠'],['hga:tag:nianxia','年下']],'hq':[['hq:home','热门'],['hq:tag:甜宠','甜宠'],['hq:tag:霸总','霸总'],['hq:tag:重生','重生'],['hq:tag:穿越','穿越'],['hq:tag:复仇','复仇'],['hq:tag:都市','都市'],['hq:tag:古装','古装'],['hq:tag:爽剧','爽剧'],['hq:tag:浪漫','浪漫'],['hq:tag:大女主','大女主'],['hq:tag:豪门','豪门']],'jg':[['jg:heat','热度'],['jg:latest','最新'],['jg:landing','首页推荐'],['jg:nav_all','全部'],['jg:nav_original','原创精品'],['jg:nav_single','单体作品'],['jg:nav_anime','动漫改编'],['jg:nav_movie','影视改编'],['jg:len_multi','多集'],['jg:len_single','单集']]}},{id:'cg57',name:'吃瓜',noTmdb:true,type:'chigua57',hidden:true,onlineOnly:true,domains:['https://57cg4.com'],noAutoCats:true,cats:[['hot','热门'],['aichengduanju','成人AI短剧'],['jrcg','今日吃瓜'],['mrds','每日大赛'],['wanghong','网红黑料'],['video','网黄合集'],['cheating','出轨劈腿'],['live','直播擦边']]},{id:'madou',name:'麻豆',noTmdb:true,onlineOnly:true,type:'adultx',domains:['https://madou.club','https://257915.xyz','https://missav.ws','https://missav.ai','https://missav.live'],listSelector:'article.excerpt',searchListSelector:'article.excerpt',titleSelector:'h1.article-title,h1',detailPanSelector:'a[href]',noAutoCats:true,categoryUrl:'/category/{categoryId}/page/{page}',searchUrl:'/?s={keyword}',cats:[['md','麻豆传媒'],['bat1','中文字幕'],['bat2','日韩无码'],['bat3','精品推荐'],['bat4','国产自拍'],['miss','MissAV'],['av321','321AV'],['liss','LissAV'],['av18','18AV'],['x134','134X']],catGroups:{'md':[['md:麻豆传媒','麻豆传媒'],['md:hongkongdoll','HongKongDoll'],['md:果冻传媒','果冻传媒'],['md:蜜桃影像','蜜桃影像'],['md:天美传媒','天美传媒'],['md:精东影业','精东影业'],['md:91制片厂','91制片厂'],['md:皇家华人','皇家华人'],['md:兔子先生','兔子先生'],['md:星空无限传媒','星空无限'],['md:爱豆','爱豆'],['md:麻豆导演系列','导演系列'],['md:大象传媒','大象传媒'],['md:猫爪影像','猫爪影像'],['md:杏吧','杏吧'],['md:乐播传媒','乐播传媒'],['md:psychoporntw','PsychoPorn'],['md:麻豆番外篇','番外篇'],['md:麻豆花絮','花絮']],'bat1':[['bat:64360061','中文字幕'],['bat:64370061','网红主播'],['bat:64380061','成人动漫'],['bat:64390061','欧美情色'],['bat:64400061','国模私拍'],['bat:64430061','韩国伦理'],['bat:64170061','国产情色'],['bat:64180061','日本无码']],'bat2':[['bat:64170041','日韩无码'],['bat:64190041','欧美精品'],['bat:64200041','国产精品'],['bat:64340041','中文字幕'],['bat:64360041','动漫精品'],['bat:64390041','日韩精品'],['bat:64430041','自拍偷拍'],['bat:64580041','大秀视频']],'bat3':[['bat:64360111','精品推荐'],['bat:64380111','国产色情'],['bat:64390111','主播直播'],['bat:64630111','91探花'],['bat:64750111','传媒出品'],['bat:64500111','自拍偷拍'],['bat:64530111','日本精品'],['bat:64460111','欧美精品']],'bat4':[['bat:64170031','国产自拍'],['bat:64180031','欧美极品'],['bat:64190031','日韩无码'],['bat:64360031','中文字幕'],['bat:64370031','动漫精品'],['bat:64380031','极骚萝莉'],['bat:64410031','三级自慰'],['bat:64420031','强奸乱伦']],'miss':[['miss:new','最新'],['miss:release','新作'],['miss:uncensored-leak','无码流出'],['miss:chinese-subtitle','中文字幕'],['miss:today-hot','今日热门'],['miss:weekly-hot','本周热门'],['miss:monthly-hot','本月热门'],['miss:search/HEYZO','HEYZO'],['miss:search/Caribbeancom','Caribbeancom'],['miss:search/XXX-AV','XXX-AV']],'av321':[['av321:20','有码'],['av321:21','无码'],['av321:22','中字']],'liss':[['liss:videos/new-releases','最新'],['liss:videos/recent','最近'],['liss:videos/hot/today','今日热'],['liss:videos/hot/week','本周热'],['liss:videos/hot/month','本月热'],['liss:videos/tag/中文字幕','中文字幕'],['liss:videos/tag/无码流出','无码流出']],'av18':[['av18:chinese_random','中文字幕'],['av18:censored_random','有码'],['av18:uncensored_random','无码'],['av18:amateurjav_random','素人'],['av18:reducing-mosaic_random','无码破解'],['av18:dt_random','国产自拍']],'x134':[['x134:popular','热门'],['x134:featured','精选']]}},{id:'badnews',name:'坏新闻',noTmdb:true,hidden:true,onlineOnly:true,domains:['https://bad.news'],listSelector:'.link.show',searchListSelector:'.link.show',titleSelector:'h3 a.title,a.title',detailPanSelector:'video[data-source],a[href]',noAutoCats:true,categoryUrl:'/{categoryId}',searchUrl:'/search/q-{keyword}/type-all',cats:[['sort-hot','热门'],['sort-new','最新'],['sort-score','高分'],['sort-better','精选'],['tag/porn','视频'],['tag/long-porn','长视频']]},{id:'okxxx',name:'OKXXX',noTmdb:true,hidden:true,onlineOnly:true,type:'tubex',domains:['https://okxxx.ws','https://okxxx.one','https://okx18.vip','https://okxxxx.net'],noAutoCats:true,listSelector:'a[href*="/video/"]',searchUrl:'/search/{keyword}/',cats:[['popular','热门'],['most-popular','最热'],['top-rated','高分']]},{id:'lifan',name:'里番',noTmdb:true,onlineOnly:true,type:'lifan',domains:['https://www.hanime102.com','https://www.cartoonporno.cc','https://18av02.com'],noAutoCats:true,cats:[['hanime','Hanime'],['cartoon','Cartoon'],['av18','18AV']],catGroups:{'hanime':[['hanime:最新上市','最新'],['hanime:裏番','裏番'],['hanime:泡麵番','泡麵番'],['hanime:Motion Anime','Motion'],['hanime:3DCG','3DCG'],['hanime:2D動畫','2D']],'cartoon':[['cartoon:new','最新'],['cartoon:hentai','Hentai'],['cartoon:anime','Anime']],'av18':[['av18:animation_random','H动画'],['av18:CensoredAnimation_random','H有码动画'],['av18:UncensoredAnimation_random','H无码动画'],['av18:tdAnimation_random','H_3D']]}},{id:'hsex',name:'HSEX',noTmdb:true,hidden:true,onlineOnly:true,type:'hsex',domains:['https://hsex01.com'],noAutoCats:true,cats:[['list-1.htm','最新'],['list-1.htm?sort=hot','最热'],['top7_list-1.htm','周榜'],['top_list-1.htm','月榜'],['5min_list-1.htm','5分钟+'],['long_list-1.htm','10分钟+']],_land:true},{id:'av591',name:'591AV',noTmdb:true,hidden:true,onlineOnly:true,type:'av591',domains:['https://591av.net'],noAutoCats:true,cats:[['pp1/','最新'],['pp1/hot/','热门'],['new/','新作'],['categories/released/','已发布'],['categories/taiwan/','台湾'],['categories/korea/','韩国'],['categories/hongkong/','香港'],['categories/91-tanhua/','91探花'],['categories/first-person-pov/','第一人称']],_land:true},{id:'xsite',name:'XXX',noTmdb:true,onlineOnly:true,type:'xsite',domains:['https://bad.news','https://57cg4.com','https://hsex01.com','https://591av.net','https://okxxxx.net'],noAutoCats:true,cats:[['hsex','HSEX'],['av591','591AV'],['okxxx','OKXXX'],['bn','坏新闻'],['cg','吃瓜']],catGroups:{'hsex':[['hsex:list-1.htm','最新'],['hsex:list-1.htm?sort=hot','最热'],['hsex:top7_list-1.htm','周榜'],['hsex:top_list-1.htm','月榜'],['hsex:5min_list-1.htm','5分钟+'],['hsex:long_list-1.htm','10分钟+']],'av591':[['av591:pp1/','最新'],['av591:pp1/hot/','热门'],['av591:new/','新作'],['av591:categories/released/','已发布'],['av591:categories/taiwan/','台湾'],['av591:categories/korea/','韩国'],['av591:categories/hongkong/','香港'],['av591:categories/91-tanhua/','91探花'],['av591:categories/first-person-pov/','第一人称']],'okxxx':[['okxxx:popular','热门'],['okxxx:most-popular','最热'],['okxxx:top-rated','高分']],'bn':[['bn:sort-hot','热门'],['bn:sort-new','最新'],['bn:sort-score','高分'],['bn:sort-better','精选'],['bn:tag/porn','视频'],['bn:tag/long-porn','长视频']],'cg':[['cg:hot','热门'],['cg:aichengduanju','成人AI短剧'],['cg:jrcg','今日吃瓜'],['cg:mrds','每日大赛'],['cg:wanghong','网红黑料'],['cg:video','网黄合集'],['cg:cheating','出轨劈腿'],['cg:live','直播擦边']]}}];
 /* 站源域名自定义：持久化覆盖，保存后立即生效，无需改代码 */
 const SITE_DOMAINS_DEFAULT={};
@@ -641,334 +641,6 @@ function _paintOverseasNetStatus(){
   }
 }
 function _paintMadouSwitch(){ _paintOverseasNetStatus(); }
-
-/* ===== 人人站登录（DedeCMS 会员）===== */
-const RENREN_AUTH_KEY='wo_renren_auth';
-function loadRenrenAuth(){
-  try{ return JSON.parse(localStorage.getItem(RENREN_AUTH_KEY)||'null')||{}; }catch(e){ return {}; }
-}
-function saveRenrenAuth(obj){
-  try{ localStorage.setItem(RENREN_AUTH_KEY, JSON.stringify(obj||{})); }catch(e){}
-}
-function renrenCookieStr(){
-  const a=loadRenrenAuth();
-  return (a&&a.cookie)?String(a.cookie).trim():'';
-}
-function renrenIsLoggedIn(){
-  const ck=renrenCookieStr();
-  return !!(ck && /DedeUserID\s*=\s*[1-9]/i.test(ck));
-}
-function renrenPaintStatus(){
-  const el=document.getElementById('renrenLoginStatus');
-  if(!el) return;
-  const a=loadRenrenAuth();
-  if(renrenIsLoggedIn()){
-    el.textContent='已登录'+(a.user?(' · '+a.user):'')+' · 请求将自动携带 Cookie';
-    el.style.color='rgba(48,209,88,.95)';
-  }else if(a.user){
-    el.textContent='已保存账号「'+a.user+'」，尚未拿到有效 Cookie，请点登录';
-    el.style.color='rgba(255,179,64,.95)';
-  }else{
-    el.textContent='未登录 · 资源页需会员时请在此登录';
-    el.style.color='rgba(255,255,255,.65)';
-  }
-}
-function renrenExtractCookieFromResp(r){
-  // 兼容 fm.req 可能返回的 headers / setCookie / cookies 字段
-  try{
-    if(!r) return '';
-    if(typeof r.setCookie==='string' && r.setCookie) return r.setCookie;
-    if(typeof r.cookie==='string' && r.cookie) return r.cookie;
-    if(Array.isArray(r.cookies) && r.cookies.length){
-      return r.cookies.map(function(x){return typeof x==='string'?x.split(';')[0]:(x&&x.name?x.name+'='+x.value:'');}).filter(Boolean).join('; ');
-    }
-    const h=r.headers||r.header||{};
-    let sc=h['set-cookie']||h['Set-Cookie']||h['SET-COOKIE']||'';
-    if(Array.isArray(sc)) sc=sc.map(function(s){return String(s).split(';')[0];}).join('; ');
-    if(sc) return String(sc);
-  }catch(e){}
-  return '';
-}
-function renrenMergeCookie(oldC, newC){
-  const map={};
-  function eat(s){
-    String(s||'').split(';').forEach(function(p){
-      p=p.trim(); if(!p||p.indexOf('=')<0) return;
-      const i=p.indexOf('=');
-      const k=p.slice(0,i).trim(); const v=p.slice(i+1).trim();
-      if(!k) return;
-      // 跳过属性
-      if(/^(path|domain|expires|max-age|secure|httponly|samesite)$/i.test(k)) return;
-      map[k]=v;
-    });
-  }
-  eat(oldC); eat(newC);
-  return Object.keys(map).map(function(k){return k+'='+map[k];}).join('; ');
-}
-
-let _renrenSessCk=''; // 验证码与登录共用的临时会话 Cookie
-function renrenBaseUrl(){
-  try{
-    const s=typeof site==='function'?site():null;
-    if(s&&s.id==='renren'&&s.domains&&s.domains[0]) return String(s.domains[0]).replace(/\/+$/,'');
-  }catch(e){}
-  return 'https://www.rrdynb.com';
-}
-async function renrenFetchText(url, opt){
-  opt=opt||{};
-  const fm=await fmReady();
-  const headers=Object.assign({
-    'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Referer':renrenBaseUrl()+'/member/login.php',
-    'Origin':renrenBaseUrl()
-  }, opt.headers||{});
-  if(_renrenSessCk) headers['Cookie']=_renrenSessCk;
-  if(fm&&fm.req){
-    const r=await fm.req(url,{
-      method:opt.method||'GET',
-      headers:headers,
-      body:opt.body,
-      responseType:opt.responseType||'text',
-      timeout:opt.timeout||16
-    });
-    const ck=renrenExtractCookieFromResp(r);
-    if(ck) _renrenSessCk=renrenMergeCookie(_renrenSessCk, ck);
-    return r;
-  }
-  const resp=await fetch(url,{
-    method:opt.method||'GET',
-    headers:headers,
-    body:opt.body,
-    credentials:'include'
-  });
-  try{
-    const sc=resp.headers.get('set-cookie');
-    if(sc) _renrenSessCk=renrenMergeCookie(_renrenSessCk, sc);
-  }catch(e){}
-  const body=opt.responseType==='base64'?null:await resp.text();
-  return {ok:resp.ok, status:resp.status, body:body, headers:{}};
-}
-async function renrenLoadCaptcha(){
-  const img=document.getElementById('renrenCaptchaImg');
-  const base=renrenBaseUrl();
-  if(img){ img.style.opacity='.45'; img.alt='加载中'; }
-  try{
-    // 先访问登录页建立 session
-    try{ await renrenFetchText(base+'/member/login.php',{timeout:12}); }catch(e){}
-    const url=base+'/include/vdimgck.php?'+Date.now();
-    const fm=await fmReady();
-    let dataUrl='';
-    if(fm&&fm.req){
-      // 优先 base64
-      let r=null;
-      try{
-        r=await fm.req(url,{
-          method:'GET',
-          headers:{
-            'User-Agent':'Mozilla/5.0',
-            'Referer':base+'/member/login.php',
-            'Cookie':_renrenSessCk||'',
-            'Accept':'image/avif,image/webp,image/apng,image/*,*/*;q=0.8'
-          },
-          responseType:'base64',
-          timeout:12
-        });
-      }catch(e1){ r=null; }
-      if(r){
-        const ck=renrenExtractCookieFromResp(r);
-        if(ck) _renrenSessCk=renrenMergeCookie(_renrenSessCk, ck);
-      }
-      let b=r&&r.body;
-      if(b && typeof b==='string' && b.length>50){
-        b=b.replace(/^data:image\/\w+;base64,/i,'');
-        // 粗判是否像 base64
-        if(/^[A-Za-z0-9+/=\s]+$/.test(b.slice(0,80))){
-          dataUrl='data:image/png;base64,'+b.replace(/\s+/g,'');
-        }
-      }
-      // 回退 arraybuffer / 直接 URL
-      if(!dataUrl){
-        try{
-          const r2=await fm.req(url,{
-            method:'GET',
-            headers:{'Referer':base+'/member/login.php','Cookie':_renrenSessCk||''},
-            responseType:'arraybuffer',
-            timeout:12
-          });
-          const ck2=renrenExtractCookieFromResp(r2);
-          if(ck2) _renrenSessCk=renrenMergeCookie(_renrenSessCk, ck2);
-          if(r2&&r2.body){
-            // 若桥接把 buffer 转成了 base64 字符串
-            if(typeof r2.body==='string' && r2.body.length>50){
-              dataUrl='data:image/png;base64,'+r2.body.replace(/^data:image\/\w+;base64,/i,'').replace(/\s+/g,'');
-            }
-          }
-        }catch(e2){}
-      }
-    }
-    if(img){
-      if(dataUrl){
-        img.src=dataUrl;
-      }else{
-        // 最后手段：直链（依赖 WebView 与桥接共享 cookie 的情况较少，但仍可显示图）
-        img.src=url+( _renrenSessCk ? '' : '');
-      }
-      img.style.opacity='1';
-      img.alt='验证码';
-    }
-    const inp=document.getElementById('renrenVdcode');
-    if(inp){ inp.value=''; inp.focus&&inp.focus(); }
-  }catch(e){
-    if(img){ img.style.opacity='1'; img.alt='加载失败'; }
-    try{ if(window._toast) window._toast('验证码加载失败'); }catch(e0){}
-  }
-}
-async function renrenDoLogin(user, pass, base, vdcode){
-  user=String(user||'').trim();
-  pass=String(pass||'');
-  vdcode=String(vdcode||'').trim();
-  if(!user||!pass) throw new Error('请输入用户名和密码');
-  if(!vdcode) throw new Error('请输入验证码');
-  base=(base||renrenBaseUrl()).replace(/\/+$/,'');
-  // 确保 session：先打登录页
-  try{ await renrenFetchText(base+'/member/login.php',{timeout:12}); }catch(e){}
-  const body='fmdo=login&dopost=login&gourl=&keeptime=2592000'
-    +'&userid='+encodeURIComponent(user)
-    +'&pwd='+encodeURIComponent(pass)
-    +'&vdcode='+encodeURIComponent(vdcode);
-  const url=base+'/member/index_do.php';
-  const headers={
-    'Content-Type':'application/x-www-form-urlencoded',
-    'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Referer':base+'/member/login.php',
-    'Origin':base
-  };
-  if(_renrenSessCk) headers['Cookie']=_renrenSessCk;
-  const fm=await fmReady();
-  let html='', gotCookie=_renrenSessCk||'';
-  if(fm&&fm.req){
-    const r=await fm.req(url,{method:'POST',headers:headers,body:body,responseType:'text',timeout:18});
-    html=typeof r.body==='string'?r.body:(r.body==null?'':String(r.body));
-    const ck=renrenExtractCookieFromResp(r);
-    if(ck){ gotCookie=renrenMergeCookie(gotCookie, ck); _renrenSessCk=gotCookie; }
-  }else{
-    const resp=await fetch(url,{method:'POST',headers:headers,body:body,credentials:'include'});
-    html=await resp.text();
-    try{
-      const sc=resp.headers.get('set-cookie');
-      if(sc){ gotCookie=renrenMergeCookie(gotCookie, sc); _renrenSessCk=gotCookie; }
-    }catch(e){}
-  }
-  if(/验证码(不正确|错误|已过期|失效)|认证码不正确/i.test(html)){
-    try{ renrenLoadCaptcha(); }catch(e){}
-    throw new Error('验证码错误，已刷新请重试');
-  }
-  if(/密码错误|用户不存在|账号.*不存在|登录失败|登陆失败/i.test(html)){
-    try{ renrenLoadCaptcha(); }catch(e){}
-    throw new Error('账号或密码错误');
-  }
-  // 成功：页面特征或 Cookie 含 DedeUserID
-  const okPage=/退出|注销|会员中心|我的资料|登录成功|登陆成功/i.test(html) && !/请输入验证码|验证码错误/i.test(html);
-  const okCk=/DedeUserID\s*=\s*[1-9]/i.test(gotCookie||'');
-  if(okPage || okCk){
-    if(!okCk){
-      const m=html.match(/DedeUserID['\"]?\s*[:=]\s*['\"]?(\d+)/i);
-      if(m) gotCookie=renrenMergeCookie(gotCookie, 'DedeUserID='+m[1]);
-    }
-    // 登录后再拉一次会员页确认并补充 Cookie
-    try{
-      const r2=await renrenFetchText(base+'/member/index.php',{timeout:12});
-      const ck2=renrenExtractCookieFromResp(r2);
-      if(ck2) gotCookie=renrenMergeCookie(gotCookie, ck2);
-      const h2=typeof r2.body==='string'?r2.body:'';
-      if(/DedeUserID/i.test(h2)){
-        const m2=h2.match(/DedeUserID['\"]?\s*[:=]\s*['\"]?(\d+)/i);
-        if(m2) gotCookie=renrenMergeCookie(gotCookie, 'DedeUserID='+m2[1]);
-      }
-    }catch(e){}
-    saveRenrenAuth({user:user, pass:pass, cookie:gotCookie||_renrenSessCk||'', ts:Date.now()});
-    return {ok:true, cookie:gotCookie||_renrenSessCk||''};
-  }
-  // 粘贴 Cookie 兜底在外部处理
-  try{ renrenLoadCaptcha(); }catch(e){}
-  throw new Error('登录失败，请检查账号/验证码，或改用 Cookie 粘贴');
-}
-function bindRenrenLoginUI(){
-  const block=document.getElementById('renrenLoginBlock');
-  if(!block) return;
-  const s=typeof site==='function'?site():null;
-  const show=s&&s.id==='renren';
-  block.style.display=show?'block':'none';
-  if(!show) return;
-  const a=loadRenrenAuth();
-  const u=document.getElementById('renrenUser');
-  const p=document.getElementById('renrenPass');
-  const ck=document.getElementById('renrenCookie');
-  if(u && a.user) u.value=a.user;
-  if(p && a.pass) p.value=a.pass;
-  if(ck && a.cookie) ck.value=a.cookie;
-  renrenPaintStatus();
-  // 加载验证码
-  try{ renrenLoadCaptcha(); }catch(e){}
-  const capImg=document.getElementById('renrenCaptchaImg');
-  if(capImg){
-    capImg.onclick=function(e){ e.preventDefault(); e.stopPropagation(); renrenLoadCaptcha(); };
-  }
-  const loginBtn=document.getElementById('renrenLoginBtn');
-  const logoutBtn=document.getElementById('renrenLogoutBtn');
-  if(loginBtn){
-    loginBtn.onclick=async function(e){
-      e.preventDefault(); e.stopPropagation();
-      const user=(document.getElementById('renrenUser')||{}).value||'';
-      const pass=(document.getElementById('renrenPass')||{}).value||'';
-      const vd=(document.getElementById('renrenVdcode')||{}).value||'';
-      const cookieEl=document.getElementById('renrenCookie');
-      const pasted=cookieEl?String(cookieEl.value||'').trim():'';
-      // 仅保存 Cookie
-      if(pasted && /DedeUserID\s*=\s*[1-9]/i.test(pasted) && (!user || !pass)){
-        saveRenrenAuth({user:user||loadRenrenAuth().user||'', pass:'', cookie:pasted, ts:Date.now()});
-        renrenPaintStatus();
-        try{ if(window._toast) window._toast('已保存人人 Cookie'); }catch(err){}
-        return;
-      }
-      loginBtn.disabled=true;
-      const st=document.getElementById('renrenLoginStatus');
-      if(st){ st.textContent='正在登录…'; st.style.color='rgba(255,255,255,.7)'; }
-      try{
-        // 若同时填了 Cookie，优先用 Cookie
-        if(pasted && /DedeUserID\s*=\s*[1-9]/i.test(pasted) && !vd){
-          saveRenrenAuth({user:user, pass:pass, cookie:pasted, ts:Date.now()});
-          renrenPaintStatus();
-          try{ if(window._toast) window._toast('已保存人人登录态'); }catch(err){}
-          return;
-        }
-        const base=(s.domains&&s.domains[0])||renrenBaseUrl();
-        const res=await renrenDoLogin(user, pass, base, vd);
-        renrenPaintStatus();
-        try{ if(window._toast) window._toast('人人登录成功'); }catch(err){}
-        try{ renrenLoadCaptcha(); }catch(e3){}
-      }catch(err){
-        if(st){ st.textContent='登录失败：'+(err&&err.message||err); st.style.color='rgba(255,69,58,.95)'; }
-        try{ if(window._toast) window._toast('登录失败：'+(err&&err.message||err)); }catch(e2){}
-        try{ renrenLoadCaptcha(); }catch(e4){}
-      }finally{
-        loginBtn.disabled=false;
-      }
-    };
-  }
-  if(logoutBtn){
-    logoutBtn.onclick=function(e){
-      e.preventDefault(); e.stopPropagation();
-      saveRenrenAuth({});
-      if(u) u.value='';
-      if(p) p.value='';
-      if(ck) ck.value='';
-      renrenPaintStatus();
-      try{ if(window._toast) window._toast('已退出人人登录'); }catch(err){}
-    };
-  }
-}
-
 
 function openSiteDomainConfig(){
   return new Promise(resolve=>{
@@ -1645,10 +1317,7 @@ async function req(url,timeoutSec=16,quiet=false,opts){
   // 人人站：自动附带会员 Cookie
   let _extraHeaders={};
   try{
-    if(/rrdynb\.com|rrdyw\./i.test(String(url)) || (opts&&opts.renrenAuth)){
-      const ck=renrenCookieStr();
-      if(ck) _extraHeaders['Cookie']=ck;
-    }
+
     if(opts&&opts.headers){ Object.keys(opts.headers).forEach(function(k){ _extraHeaders[k]=opts.headers[k]; }); }
   }catch(e){}
   // ① 原生 App 桥接：直连（等桥接就绪后再判断，避免早于注入时机误走浏览器 fetch）
@@ -1659,12 +1328,7 @@ async function req(url,timeoutSec=16,quiet=false,opts){
     let r=await fm.req(url,_init);
     if(!r.ok)throw new Error(r.error||('HTTP '+r.status));
     const body=r.body||'';
-    // 人人未登录提示
-    try{
-      if(/rrdynb\.com|rrdyw\./i.test(String(url)) && /请先登录|需要登录|会员登录后|登录后查看|登陆后下载/i.test(body) && !renrenIsLoggedIn()){
-        try{ if(window._toast) window._toast('人人需要登录：请到设置里登录人人账号'); }catch(e0){}
-      }
-    }catch(e1){}
+
     return body;
   }
   // ② 没有原生桥接（纯浏览器网页）才走这里：先直连
@@ -1919,11 +1583,10 @@ function detailShowTitle(v,raw){
   const s=String(raw||'').trim();
   if(!s) return s;
   const sid=v&&(v.siteId||v.site||'');
-  if(sid==='renren'||sid==='huban'){
-    // 米字/人人：只展示《》里的片名
+  if(sid==='huban'){
+    // 米字：只展示《》里的片名
     const m=s.match(/[《<「『【]([^》>」』】]{1,80})[》>」』】]/);
     if(m&&m[1].trim()) return m[1].trim();
-    if(sid==='renren') return stripPanNoise(s);
     // 米字兜底：去掉 [夸克网盘] 前缀和（年份）后的尾巴
     return s.replace(/^\[[^\]]*\]/,'').replace(/^[\[【]?[^\]】]*(电影|电视剧|动漫|综艺|纪录片)[\]】]?/,'').replace(/（\d{4}）[\s\S]*$/,'').replace(/\(\d{4}\)[\s\S]*$/,'').trim()||s;
   }
@@ -1974,8 +1637,7 @@ function cardFrom(el,base,site){
   let a=el.querySelector('a[href]')||el.closest('a[href]')||el,href=a.getAttribute('href')||'';
   let img=el.querySelector('img'),title=a.getAttribute('title')||img&&img.getAttribute('alt')||clean(el.querySelector('.module-item-title,.module-search-item-title,.video-title,.title,.card-tt')?.textContent)||clean(a.textContent);
   title=stripHtmlTags(title);   // 6V 等站搜索结果用 <font color='red'> 高亮关键词
-  // 人人站标题是整段 SEO 串（《片名》百度云网盘夸克下载.阿里云盘.中字），先剥掉网盘广告尾巴
-  if(site&&site.id==='renren') title=stripPanNoise(title);
+
   // 米字型：标题常带 [夸克网盘]国家电影《片名》（年份）类型 豆瓣x.x —— 只留《》内片名
   if(site&&site.id==='huban'){
     const raw=String(title||'');
@@ -2167,7 +1829,7 @@ function stripHuajuanPrefix(name){
 }
 async function ensureCats(s){
   if(CATS_CACHE[s.id])return CATS_CACHE[s.id];
-  if(s.type==='flarum'||s.type==='hdhive'||s.noAutoCats){ CATS_CACHE[s.id]=s.cats; return s.cats; }
+  if(s.type==='flarum'||s.noAutoCats){ CATS_CACHE[s.id]=s.cats; return s.cats; }
   if(s.id==='fangkong'||s.listStyle==='list'){ CATS_CACHE[s.id]=s.cats; return s.cats; }  // 放空等列表站：固定「最近」
   try{
     const r=await get(s,'/');
@@ -3177,78 +2839,6 @@ function flarumCards(text, s, base){
   return out;
 }
 // 分类列表统一入口：论坛站走 JSON，其余站走原来的 HTML 解析
-
-/* ===== 鸟巢索引 ===== */
-const HDHIVE_DEFAULT_URL='https://gh-proxy.com/https://raw.githubusercontent.com/longmingfudi/voxlinepg/refs/heads/main/catalog.json';
-let _hdhiveCache=null,_hdhiveLoading=null;
-function hdhiveUrl(s){return (s&&s.catalogUrl)||HDHIVE_DEFAULT_URL}
-async function hdhiveLoadCatalog(s){
-  if(_hdhiveCache&&_hdhiveCache.items&&_hdhiveCache.items.length) return _hdhiveCache.items;
-  if(_hdhiveLoading) return _hdhiveLoading;
-  const candidates=[hdhiveUrl(s),'https://gh-proxy.com/https://raw.githubusercontent.com/longmingfudi/voxlinepg/refs/heads/main/catalog.json','https://cdn.jsdelivr.net/gh/longmingfudi/voxlinepg@main/catalog.json','https://raw.githubusercontent.com/longmingfudi/voxlinepg/refs/heads/main/catalog.json'];
-  _hdhiveLoading=(async()=>{
-    let lastErr=null,text='',used='';
-    for(const url of candidates){
-      try{
-        let body; try{body=await req(url,50,true)}catch(e){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);body=await r.text()}
-        text=typeof body==='string'?body:JSON.stringify(body);
-        if(!text||text.length<100) throw new Error('empty');
-        const h=text.trim()[0]; if(h!=='{'&&h!=='[') throw new Error('not json');
-        used=url; break;
-      }catch(e){lastErr=e;text=''}
-    }
-    if(!text){_hdhiveLoading=null;throw new Error('鸟巢索引加载失败：'+(lastErr&&lastErr.message||'network'))}
-    let data; try{data=JSON.parse(text)}catch(e){_hdhiveLoading=null;throw new Error('鸟巢索引 JSON 解析失败')}
-    const items=Array.isArray(data)?data:(data.items||[]);
-    if(!items.length){_hdhiveLoading=null;throw new Error('鸟巢索引为空')}
-    _hdhiveCache={items,url:used}; _hdhiveLoading=null; return items;
-  })();
-  try{return await _hdhiveLoading}catch(e){_hdhiveLoading=null;throw e}
-}
-function hdhivePanLabel(d){const m={quark:'夸克',baidu:'百度',ali:'阿里','115':'115',tianyi:'天翼',mcloud:'移动',guangya:'光涯',ed2k:'ED2K',magnet:'磁力','123':'123',xunlei:'迅雷',uc:'UC',pikpak:'PikPak',other:'网盘'};return m[d]||d||'网盘'}
-function hdhiveKind(it){
-  const blob=[String(it&&it.n||'')]; for(const s of (it&&it.shares)||[]) if(s&&s.m) blob.push(String(s.m));
-  const t=blob.join(' ');
-  if(/动画|动漫|剧场版|新番|里番|OVA|OAD|日漫|国漫|番剧|TV动画/.test(t)) return 'anime';
-  if(/综艺|晚会|真人秀|脱口秀|演唱会|选秀|访谈|音乐节|跨年|春晚|舞台剧|喜剧大赛|喜人奇妙夜/.test(t)) return 'variety';
-  if(/(?:^|[^a-z0-9])s\d{1,2}(?:e\d{1,3})?(?:[^a-z0-9]|$)/i.test(t)||/第[一二三四五六七八九十\d]+[季部]/.test(t)||/全\d{1,3}集|更新至|更至|完结|合集|连续剧/.test(t)||/E\d{2,3}/i.test(t)||/Season\s*\d+/i.test(t)) return 'tv';
-  return 'movie';
-}
-function hdhiveKindLabel(k){return ({anime:'动漫',variety:'综艺',tv:'剧集',movie:'电影'})[k]||'影视'}
-function hdhiveFilter(items,cat){
-  if(!cat||cat==='latest'||cat==='home'||cat==='最近') return items;
-  if(cat==='movie'||cat==='电影') return items.filter(it=>hdhiveKind(it)==='movie');
-  if(cat==='tv'||cat==='剧集'||cat==='电视剧') return items.filter(it=>hdhiveKind(it)==='tv');
-  if(cat==='anime'||cat==='动漫') return items.filter(it=>hdhiveKind(it)==='anime');
-  if(cat==='variety'||cat==='综艺') return items.filter(it=>hdhiveKind(it)==='variety');
-  return items.filter(it=>(it.shares||[]).some(s=>s.d===cat));
-}
-function hdhiveSearch(items,q){
-  const raw=String(q||'').trim().toLowerCase(); if(!raw) return items;
-  const compact=raw.replace(/\s+/g,''); const scored=[];
-  for(const it of items){
-    const n=String(it.n||'').toLowerCase(),k=String(it.k||'').toLowerCase(); let score=0;
-    if(k===compact||n===raw) score=100; else if(n.includes(raw)||k.includes(compact)) score=80;
-    else if(compact.length>=2&&(n.includes(compact)||k.includes(compact))) score=60;
-    if(score<80) for(const s of it.shares||[]) if(String(s.m||'').toLowerCase().includes(raw)){score=Math.max(score,50);break}
-    if(score>0) scored.push({it,score});
-  }
-  scored.sort((a,b)=>b.score-a.score||String(b.it.c||'').localeCompare(String(a.it.c||'')));
-  return scored.map(x=>x.it);
-}
-function hdhiveToCard(it,s){
-  const shares=it.shares||[], drives=[...new Set(shares.map(x=>x.d).filter(Boolean))];
-  return {title:it.n||it.k||'未命名',href:'hdhive://'+encodeURIComponent(it.k||it.n||''),pic:'',remark:hdhiveKindLabel(hdhiveKind(it))+' · '+drives.map(hdhivePanLabel).join('/')+(shares.length>1?(' · '+shares.length+'线'):''),siteId:s.id,siteName:s.name,quality:(typeof getQuality==='function'?getQuality((it.n||'')+' '+(shares[0]&&shares[0].m||'')):'')||'',year:it.y||'',_hdhive:it};
-}
-async function hdhiveList(s,cat,pg){const items=await hdhiveLoadCatalog(s);const f=hdhiveFilter(items,cat);const size=(s.pageSize||24)|0;const page=Math.max(1,pg|0);return f.slice((page-1)*size,page*size).map(it=>hdhiveToCard(it,s))}
-async function hdhiveSearchList(s,q){return hdhiveSearch(await hdhiveLoadCatalog(s),q).slice(0,40).map(it=>hdhiveToCard(it,s))}
-function hdhiveDetailFromItem(v){
-  const it=v&&v._hdhive; if(!it) return {info:{title:v&&v.title||'',pic:v&&v.pic||'',desc:'',siteName:'鸟巢'},pans:[]};
-  const pans=[],seen=new Set();
-  for(const sh of it.shares||[]){const u=String(sh.u||'').trim();if(!u||seen.has(u))continue;seen.add(u);const type=hdhivePanLabel(sh.d);const note=(typeof clean==='function'?clean(sh.m||''):(sh.m||''));const grp=(typeof clean==='function'?clean(sh.g||''):(sh.g||''));pans.push({name:type+(note?(' · '+note):'')+(grp?(' · '+grp):''),url:u,type,siteName:'鸟巢',password:sh.p||''})}
-  return {info:{title:it.n||v.title||'',pic:v.pic||'',desc:hdhiveKindLabel(hdhiveKind(it))+(it.y?(' · '+it.y):'')+' · 共 '+(it.shares||[]).length+' 条线路',siteName:'鸟巢'},pans};
-}
-
 
 /* ===== 瓜子影视 gz360.tv：AES-CBC + 加密 API，在线 m3u8 ===== */
 /* 多节点：优先国内可直连备用节点，失败自动切换并缓存成功节点 */
@@ -6653,7 +6243,6 @@ async function fetchCatList(s,cat,pg){
   if(s.type==='huangguoai'||s.id==='huangguoai') return huangguoaiList(s,cat,pg).then(function(list){return typeof huangguoaiDedupeCards==='function'?huangguoaiDedupeCards(list):list;});
   if(s.type==='flickreels'||s.id==='flickreels') return flickreelsList(s,cat,pg);
   if(s.type==='jinguo'||s.id==='jinguo') return jinguoList(s,cat,pg);
-  if(s.type==='hdhive') return hdhiveList(s,cat,pg);
   if(s.type==='xsite'||s.id==='xsite') return xsiteList(s,cat,pg);
   if(s.type==='adultx'||(s.id==='madou'&&s.type==='adultx')) return adultxList(s,cat,pg);
   if(s.type==='chigua57'||s.id==='cg57') return chigua57List(s,cat,pg);
@@ -6756,7 +6345,6 @@ async function searchSite(s,q,timeoutSec=16){
   if(s.type==='adultx'||(s.id==='madou'&&s.type==='adultx')) return adultxSearch(s,q);
   if(s.type==='chigua57'||s.id==='cg57') return chigua57Search(s,q);
   const ekw=encodeURIComponent(q);
-  if(s.type==='hdhive') return hdhiveSearchList(s,q);
   // 论坛站：走公开 JSON 接口（/?q= 是前端渲染，抓 HTML 搜不到东西）
   if(s.type==='flarum'&&s.searchUrl){
     // ① /?q= 搜索页：HTML 里内嵌了接口结果（/api/discussions?filter[q]= 对游客常被限流 403）
@@ -10855,12 +10443,7 @@ async function parseDetail(v){
   if(v&&(v.siteId==='flickreels'||(v.href&&String(v.href).indexOf('flickreels://')===0))) return flickreelsDetail(v);
   if(v&&(v.siteId==='cg57'||(v.href&&String(v.href).indexOf('chigua57://')===0)||(v.href&&/57cg4\.com\/events\//i.test(String(v.href))))) return chigua57Detail(v);
   if(v&&(v.siteId==='hdhive'||v._hdhive||(v.href&&String(v.href).indexOf('hdhive://')===0))){
-    if(!v._hdhive&&_hdhiveCache&&_hdhiveCache.items){
-      try{const k=decodeURIComponent(String(v.href||'').replace(/^hdhive:\/\//,''));const hit=_hdhiveCache.items.find(x=>x.k===k||x.n===v.title);if(hit)v._hdhive=hit}catch(e){}
-    }
-    return hdhiveDetailFromItem(v);
-  }
-  let sources=v.sources||[v];
+    let sources=v.sources||[v];
   // 并发请求所有站源（最多5个），不再一个个串行等，详情页打开速度≈最慢那一个源，而不是全部加起来
   let results=await Promise.all(sources.slice(0,10).map(async src=>{
     let s=SITES.find(x=>x.id===src.siteId)||site();
@@ -11892,10 +11475,31 @@ function _normPanType(p){
 // ===== 盘搜（PanSou 聚合网盘搜索）=====
 const PAN_CONFIG={
   apiBase:'https://so.252035.xyz',
-  diskTypes:['quark','aliyun','baidu','uc','tianyi','xunlei','123','115','mobile','guangya','magnet','ed2k']
+  diskTypes:['quark','aliyun','baidu','uc','tianyi','xunlei','123','115','mobile','guangya','magnet','ed2k'],
+  panChannels:[],
+  panPlugins:[]
 };
-try{ const saved=localStorage.getItem('wo_pan_api'); if(saved) PAN_CONFIG.apiBase=saved; }catch(e){}
+// 盘搜地址持久化：首次使用默认 https://so.252035.xyz；用户手动输入并保存后始终保留，不再自动恢复默认。
+try{
+  const saved=localStorage.getItem('wo_pan_api');
+  if(saved && saved.trim()){
+    PAN_CONFIG.apiBase=saved.trim();
+  }else{
+    PAN_CONFIG.apiBase='https://so.252035.xyz';
+    localStorage.setItem('wo_pan_api','https://so.252035.xyz');
+  }
+}catch(e){
+  PAN_CONFIG.apiBase='https://so.252035.xyz';
+}
 try{ const t=JSON.parse(localStorage.getItem('wo_pan_types')||'null'); if(Array.isArray(t)&&t.length) PAN_CONFIG.diskTypes=t; }catch(e){}
+try{ const c=JSON.parse(localStorage.getItem('wo_pan_channels')||'null'); if(Array.isArray(c)) PAN_CONFIG.panChannels=c; }catch(e){}
+try{ const p=JSON.parse(localStorage.getItem('wo_pan_plugins')||'null'); if(Array.isArray(p)) PAN_CONFIG.panPlugins=p; }catch(e){}
+const PAN_SOURCE_CONFIG={channels:[],plugins:[]};
+try{
+  const cache=JSON.parse(localStorage.getItem('wo_pan_source_cache')||'{}');
+  if(Array.isArray(cache.channels))PAN_SOURCE_CONFIG.channels=cache.channels;
+  if(Array.isArray(cache.plugins))PAN_SOURCE_CONFIG.plugins=cache.plugins;
+}catch(e){}
 // 一次性迁移：把新增类型补进老用户已保存的选择里（每个类型只补一次，之后尊重用户勾选）
 try{
   if(localStorage.getItem('wo_pan_types')){
@@ -11920,62 +11524,230 @@ const PAN_TYPE_LABEL={quark:'夸克',aliyun:'阿里',baidu:'百度',uc:'UC',tian
 // 123 网盘不参与有效性检测：不亮路灯、不做失效过滤，始终保留显示；其余网盘照旧检测
 const PAN_CHECK_TYPES=new Set(['aliyun','quark','uc','baidu','tianyi','xunlei','115','mobile']);
 function panTypeLabel(t){return PAN_TYPE_LABEL[t]||t||'网盘'}
-// 盘搜设置弹窗：接口地址 + 网盘类型多选；确定后写入本地存储，返回 true 表示已保存
 function openPanConfig(){
-  return new Promise(resolve=>{
-    const mask=$('#panCfgMask'),input=$('#panCfgInput'),okBtn=$('#panCfgOk'),cancelBtn=$('#panCfgCancel');
+  return new Promise(async resolve=>{
+    const mask=$('#panCfgMask'),input=$('#panCfgInput'),okBtn=$('#panCfgOk'),cancelBtn=$('#panCfgCancel'),resetBtn=$('#panCfgReset');
     const titleEl=mask&&mask.querySelector('.custom-modal-title');
-    const typeCfg=$('#panTypeCfg'),grid=$('#panTypeGrid'),allBtn=$('#panTypeAll');
+    const sourceCfg=$('#panSourceCfg'),tabs=$('#panSourceTabs'),listEl=$('#panSourceList');
+    const sourceTitle=$('#panSourceTitle'),allBtn=$('#panSourceAll'),refreshBtn=$('#panSourceRefresh');
+    const channelCount=$('#panChannelCount'),pluginCount=$('#panPluginCount'),typeCount=$('#panTypeCount');
+    const urlHistory=$('#panUrlHistory');
     if(!mask){resolve(false);return}
     if(titleEl) titleEl.textContent='盘搜设置';
     input.value=PAN_CONFIG.apiBase||'';
-    const sel=new Set(PAN_CONFIG.diskTypes);
-    function paintAll(){ allBtn.textContent = sel.size>=PAN_ALL_TYPES.length ? '全不选' : '全选'; }
-    if(typeCfg) typeCfg.style.display='block';
-    grid.innerHTML=PAN_ALL_TYPES.map(t=>
-      `<button type="button" class="pan-type-chip${sel.has(t)?' on':''}" data-t="${esc(t)}">`
-      +`<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`
-      +`<span>${esc(panTypeLabel(t))}</span></button>`).join('');
-    grid.querySelectorAll('.pan-type-chip').forEach(chip=>{
-      chip.onclick=()=>{
-        const t=chip.dataset.t;
-        if(sel.has(t))sel.delete(t);else sel.add(t);
-        chip.classList.toggle('on',sel.has(t));
-        paintAll();
-      };
-    });
-    allBtn.onclick=()=>{
-      if(sel.size>=PAN_ALL_TYPES.length)sel.clear();
-      else PAN_ALL_TYPES.forEach(t=>sel.add(t));
-      grid.querySelectorAll('.pan-type-chip').forEach(c=>c.classList.toggle('on',sel.has(c.dataset.t)));
-      paintAll();
+    if(urlHistory){
+      urlHistory.querySelectorAll('.pan-url-item').forEach(item=>{
+        item.onclick=()=>{input.value=item.textContent.trim();};
+      });
+      input.onfocus=()=>urlHistory.classList.add('show');
+      input.onblur=()=>{setTimeout(()=>urlHistory.classList.remove('show'),150);};
+    }
+
+    if(sourceCfg) sourceCfg.style.display='block';
+    if(mask.querySelector('#panTypeCfg')) mask.querySelector('#panTypeCfg').style.display='none';
+
+    let activePane='channels';
+    let channelList=Array.isArray(PAN_SOURCE_CONFIG.channels)?PAN_SOURCE_CONFIG.channels.slice():[];
+    let pluginList=Array.isArray(PAN_SOURCE_CONFIG.plugins)?PAN_SOURCE_CONFIG.plugins.slice():[];
+    let channelSel=new Set(PAN_CONFIG.panChannels||[]);
+    let pluginSel=new Set(PAN_CONFIG.panPlugins||[]);
+    let typeSel=new Set(PAN_CONFIG.diskTypes);
+
+    const normalizeNames=(v)=>{
+      if(!Array.isArray(v))return [];
+      return v.map(x=>{
+        if(typeof x==='string')return x.trim();
+        if(x&&typeof x==='object')return String(x.name||x.id||x.channel||x.plugin||'').trim();
+        return '';
+      }).filter(Boolean);
     };
-    paintAll();
+
+    const setDefaultsFromHealth=()=>{
+      // TG频道和搜索插件永久默认全部勾选：忽略旧的取消记录，每次打开设置都恢复全选。
+      channelSel=new Set(channelList);
+      pluginSel=new Set(pluginList);
+      try{localStorage.setItem('wo_pan_channels',JSON.stringify(channelList));}catch(e){}
+      try{localStorage.setItem('wo_pan_plugins',JSON.stringify(pluginList));}catch(e){}
+    };
+
+    const updateCounts=()=>{
+      if(channelCount)channelCount.textContent=`${channelSel.size} / ${channelList.length}`;
+      if(pluginCount)pluginCount.textContent=`${pluginSel.size} / ${pluginList.length}`;
+      if(typeCount)typeCount.textContent=`${typeSel.size} / ${PAN_ALL_TYPES.length}`;
+    };
+
+    const paneData=()=>{
+      if(activePane==='channels')return {title:'TG 频道配置',items:channelList,sel:channelSel,key:'channel'};
+      if(activePane==='plugins')return {title:'搜索插件',items:pluginList,sel:pluginSel,key:'plugin'};
+      return {title:'网盘类型',items:PAN_ALL_TYPES.map(x=>panTypeLabel(x)),raw:PAN_ALL_TYPES,sel:typeSel,key:'type'};
+    };
+
+    const renderPane=()=>{
+      const d=paneData();
+      if(sourceTitle)sourceTitle.textContent=d.title;
+      if(!listEl)return;
+      if(!d.items.length){
+        listEl.innerHTML='<div class="pan-source-empty">暂无可用项目，点击“刷新”重新读取 PanSou 服务。</div>';
+      }else{
+        const raw=d.raw||d.items;
+        listEl.innerHTML='<div class="pan-source-grid">'+d.items.map((name,i)=>{
+          const key=raw[i];
+          const on=d.sel.has(key);
+          return `<button type="button" class="pan-source-chip${on?' on':''}" data-k="${esc(key)}"><span class="source-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="source-name" title="${esc(name)}">${esc(name)}</span></button>`;
+        }).join('')+'</div>';
+        listEl.querySelectorAll('.pan-source-chip').forEach(chip=>{
+          chip.onclick=()=>{
+            const key=chip.dataset.k;
+            if(d.sel.has(key))d.sel.delete(key);else d.sel.add(key);
+            chip.classList.toggle('on',d.sel.has(key));
+            updateCounts();
+            updateAllButton();
+          };
+        });
+      }
+      updateCounts();
+      updateAllButton();
+    };
+
+    const updateAllButton=()=>{
+      const d=paneData();
+      const all=d.items.length>0 && d.sel.size>=d.items.length;
+      if(allBtn)allBtn.textContent=all?'全不选':'全选';
+    };
+
+    const loadHealth=async()=>{
+      if(listEl)listEl.innerHTML='<div class="pan-source-loading">正在读取 PanSou 的 TG 频道和搜索插件…</div>';
+      try{
+        let d=null;
+        const fm=await fmReady();
+        const url=panApi('/api/health');
+        if(fm&&fm.req){
+          const r=await fm.req(url,{method:'GET',responseType:'json',timeout:12});
+          if(!r.ok)throw new Error(r.error||('HTTP '+r.status));
+          d=typeof r.body==='string'?JSON.parse(r.body):r.body;
+        }else{
+          const r=await fetch(url,{cache:'no-store'});
+          if(!r.ok)throw new Error('HTTP '+r.status);
+          d=await r.json();
+        }
+        const root=(d&&d.data&&typeof d.data==='object')?d.data:d||{};
+        const ch=normalizeNames(root.channels);
+        const pl=normalizeNames(root.plugins);
+        if(ch.length)channelList=ch;
+        if(pl.length)pluginList=pl;
+        PAN_SOURCE_CONFIG.channels=channelList.slice();
+        PAN_SOURCE_CONFIG.plugins=pluginList.slice();
+        try{
+          localStorage.setItem('wo_pan_source_cache',JSON.stringify({channels:channelList,plugins:pluginList}));
+        }catch(e){}
+        setDefaultsFromHealth();
+        renderPane();
+      }catch(e){
+        try{
+          const cache=JSON.parse(localStorage.getItem('wo_pan_source_cache')||'{}');
+          if(!channelList.length)channelList=normalizeNames(cache.channels);
+          if(!pluginList.length)pluginList=normalizeNames(cache.plugins);
+        }catch(_){}
+        setDefaultsFromHealth();
+        renderPane();
+        if(!channelList.length&&!pluginList.length&&listEl){
+          listEl.innerHTML='<div class="pan-source-empty">无法读取 PanSou 配置，请检查接口地址是否可用。</div>';
+        }
+      }
+    };
+
+    const switchPane=(pane)=>{
+      activePane=pane;
+      tabs&&tabs.querySelectorAll('.pan-source-tab').forEach(t=>t.classList.toggle('on',t.dataset.pane===pane));
+      renderPane();
+    };
+    tabs&&tabs.querySelectorAll('.pan-source-tab').forEach(t=>{
+      t.onclick=()=>switchPane(t.dataset.pane||'channels');
+    });
+    if(allBtn)allBtn.onclick=()=>{
+      const d=paneData();
+      const all=d.items.length>0&&d.sel.size>=d.items.length;
+      if(all)d.sel.clear();else d.items.forEach((_,i)=>d.sel.add((d.raw||d.items)[i]));
+      renderPane();
+    };
+    if(refreshBtn)refreshBtn.onclick=()=>loadHealth();
+
+    setDefaultsFromHealth();
+    updateCounts();
+    renderPane();
     mask.classList.add('show');
-    requestAnimationFrame(()=>{input.focus()});
+    await loadHealth();
+
     let done=false;
     const finish=(ok)=>{
       if(done)return;done=true;
       mask.classList.remove('show');
-      okBtn.onclick=null;cancelBtn.onclick=null;mask.onclick=null;input.onkeydown=null;allBtn.onclick=null;
+      okBtn.onclick=null;cancelBtn.onclick=null;mask.onclick=null;input.onkeydown=null;input.onfocus=null;input.onblur=null;
+      if(refreshBtn)refreshBtn.onclick=null;
+      if(allBtn)allBtn.onclick=null;
+      if(tabs)tabs.querySelectorAll('.pan-source-tab').forEach(t=>t.onclick=null);
       if(ok){
         const url=input.value.trim();
-        if(url) PAN_CONFIG.apiBase=url;
-        let arr=PAN_ALL_TYPES.filter(t=>sel.has(t));
-        if(!arr.length) arr=PAN_ALL_TYPES.slice();    // 至少保留全部，避免搜不到任何资源
+        if(url)PAN_CONFIG.apiBase=url;
+        let arr=PAN_ALL_TYPES.filter(t=>typeSel.has(t));
+        if(!arr.length)arr=PAN_ALL_TYPES.slice();
         PAN_CONFIG.diskTypes=arr;
+        PAN_CONFIG.panChannels=[...channelSel];
+        PAN_CONFIG.panPlugins=[...pluginSel];
         try{localStorage.setItem('wo_pan_api',PAN_CONFIG.apiBase)}catch(e){}
         try{localStorage.setItem('wo_pan_types',JSON.stringify(arr))}catch(e){}
+        try{localStorage.setItem('wo_pan_channels',JSON.stringify(PAN_CONFIG.panChannels))}catch(e){}
+        try{localStorage.setItem('wo_pan_plugins',JSON.stringify(PAN_CONFIG.panPlugins))}catch(e){}
       }
       resolve(ok);
     };
+    if(resetBtn)resetBtn.onclick=()=>{
+      input.value=PAN_DEFAULT_API;
+      PAN_CONFIG.apiBase=PAN_DEFAULT_API;
+      typeSel=new Set(PAN_ALL_TYPES);
+      channelSel=new Set(channelList);
+      pluginSel=new Set(pluginList);
+      renderPane();
+    };
     okBtn.onclick=()=>finish(true);
     cancelBtn.onclick=()=>finish(false);
-    mask.onclick=(e)=>{ if(e.target===mask) finish(false); };
-    input.onkeydown=(e)=>{ if(e.key==='Enter'){e.preventDefault();finish(true)} else if(e.key==='Escape'){e.preventDefault();finish(false)} };
+    mask.onclick=(e)=>{if(e.target===mask)finish(false)};
+    input.onkeydown=(e)=>{
+      if(e.key==='Enter' && document.activeElement===input){e.preventDefault();finish(true)}
+      else if(e.key==='Escape'){e.preventDefault();finish(false)}
+    };
   });
 }
+// 觅搜设置独立于盘搜：只管理觅搜自己的网盘分类，不显示盘搜接口/TG频道/搜索插件。
+// 觅搜菜单隐藏磁力、电驴，并提供 PikPak；不影响盘搜的分类配置。
+const MIPAN_ALL_TYPES=[...PAN_ALL_TYPES.filter(t=>t!=='magnet'&&t!=='ed2k'),'pikpak'];
+const MIPAN_CONFIG={diskTypes:(()=>{try{const v=JSON.parse(localStorage.getItem('wo_mipan_types')||'null');return (Array.isArray(v)?v:MIPAN_ALL_TYPES.slice()).filter(t=>MIPAN_ALL_TYPES.includes(t))}catch(e){return MIPAN_ALL_TYPES.slice()}})()};
+function openMipanConfig(){
+  return new Promise(resolve=>{
+    const mask=$('#mipanCfgMask'),listEl=$('#mipanTypeList'),allBtn=$('#mipanTypeAll'),okBtn=$('#mipanCfgOk'),cancelBtn=$('#mipanCfgCancel'),resetBtn=$('#mipanCfgReset');
+    if(!mask||!listEl){resolve(false);return;}
+    let selected=new Set(MIPAN_CONFIG.diskTypes.filter(t=>MIPAN_ALL_TYPES.includes(t)));
+    const render=()=>{
+      listEl.innerHTML='<div class="pan-source-grid">'+MIPAN_ALL_TYPES.map(t=>`<button type="button" class="pan-source-chip${selected.has(t)?' on':''}" data-k="${esc(t)}"><span class="source-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></span><span class="source-name">${esc(t==='pikpak'?'PikPak':panTypeLabel(t))}</span></button>`).join('')+'</div>';
+      listEl.querySelectorAll('.pan-source-chip').forEach(chip=>chip.onclick=()=>{const k=chip.dataset.k;if(selected.has(k))selected.delete(k);else selected.add(k);render();});
+      if(allBtn)allBtn.textContent=selected.size===MIPAN_ALL_TYPES.length?'全不选':'全选';
+    };
+    let done=false;
+    const finish=ok=>{
+      if(done)return;done=true;mask.classList.remove('show');
+      okBtn.onclick=cancelBtn.onclick=resetBtn.onclick=allBtn.onclick=mask.onclick=null;
+      if(ok){MIPAN_CONFIG.diskTypes=MIPAN_ALL_TYPES.filter(t=>selected.has(t));try{localStorage.setItem('wo_mipan_types',JSON.stringify(MIPAN_CONFIG.diskTypes));}catch(e){}}
+      resolve(ok);
+    };
+    if(allBtn)allBtn.onclick=()=>{if(selected.size===MIPAN_ALL_TYPES.length)selected.clear();else selected=new Set(MIPAN_ALL_TYPES);render();};
+    if(resetBtn)resetBtn.onclick=()=>{selected=new Set(MIPAN_ALL_TYPES);render();};
+    okBtn.onclick=()=>finish(true);cancelBtn.onclick=()=>finish(false);mask.onclick=e=>{if(e.target===mask)finish(false)};
+    render();mask.classList.add('show');
+  });
+}
+
 function panApi(path){return PAN_CONFIG.apiBase.replace(/\/+$/,'')+path}
+
 function panKeyword(t){return clean(String(t||'').replace(/[《》\[\]【】]/g,'').replace(/[(（].*?[)）]/g,''))}
 function panNormUrl(u){return String(u||'').trim().replace(/[?&]+$/,'')}
 
@@ -11993,7 +11765,17 @@ async function panReq(path,body){
 }
 
 async function panSearch(kw){
-  const data=await panReq('/api/search',{kw,res:'merge',src:'all',cloud_types:PAN_CONFIG.diskTypes});
+  // 搜索前强制使用全部 TG 频道和全部搜索插件（不受设置页取消勾选影响）
+  // 只在搜索提交时同步，避免打开设置时反复刷新造成卡顿。
+  try{
+    if(Array.isArray(PAN_SOURCE_CONFIG.channels) && PAN_SOURCE_CONFIG.channels.length){
+      PAN_CONFIG.panChannels = PAN_SOURCE_CONFIG.channels.map(x=>typeof x==='string'?x:(x.id||x.name||x.channel||'')).filter(Boolean);
+    }
+    if(Array.isArray(PAN_SOURCE_CONFIG.plugins) && PAN_SOURCE_CONFIG.plugins.length){
+      PAN_CONFIG.panPlugins = PAN_SOURCE_CONFIG.plugins.map(x=>typeof x==='string'?x:(x.id||x.name||x.plugin||'')).filter(Boolean);
+    }
+  }catch(e){}
+  const data=await panReq('/api/search',{kw,res:'merge',src:'all',cloud_types:PAN_CONFIG.diskTypes,channels:PAN_CONFIG.panChannels,plugins:PAN_CONFIG.panPlugins});
   const byType=(data&&data.data&&data.data.merged_by_type)||(data&&data.merged_by_type)||{};
   let out=[];
   Object.keys(byType).forEach(type=>{

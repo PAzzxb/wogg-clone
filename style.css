@@ -1316,16 +1316,16 @@ html.nav-mode-top .nav-filter .chip.active{
   white-space:nowrap;
   cursor:pointer;
   flex-shrink:0;
-  font-size:16px;
-  font-weight:500;
-  letter-spacing:.15px;
+  font-size:18px;
+  font-weight:600;
+  letter-spacing:.2px;
   line-height:1.2;
   color:rgba(255,255,255,.82);
   background:rgba(255,255,255,.12);
   border:none;
   border-radius:999px;
-  padding:8px 15px;
-  min-height:36px;
+  padding:11px 19px;
+  min-height:44px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -1392,23 +1392,23 @@ html.nav-mode-top .src-row-top{
 /* ===== 二级分类下拉面板：收进一个按钮里（对齐用户需求） ===== */
 /* 分组 chip：带下拉三角，视觉与普通 chip 一致 */
 .chip.has-sub{
-  padding-right:26px;
+  padding-right:30px;
   position:relative;
 }
 .chip.has-sub::after{
   content:'';
   position:absolute;
-  right:8px;top:50%;
+  right:10px;top:50%;
   width:0;height:0;
-  border-left:4px solid transparent;
-  border-right:4px solid transparent;
-  border-top:5px solid rgba(255,255,255,.55);
+  border-left:5px solid transparent;
+  border-right:5px solid transparent;
+  border-top:6px solid rgba(255,255,255,.62);
   transform:translateY(-2px);
   transition:transform .22s ease;
 }
 .chip.has-sub.drop-open::after{
   transform:translateY(1px) rotate(180deg);
-  border-top-color:rgba(255,255,255,.85);
+  border-top-color:rgba(255,255,255,.95);
 }
 /* 下拉面板：固定在一级 chips 行下方，不随页面滚动，不与站源坞重叠 */
 #catDropPanel{
@@ -1419,8 +1419,8 @@ html.nav-mode-top .src-row-top{
   justify-content:center;
   pointer-events:none;
   opacity:0;
-  transform:translateY(-8px);
-  transition:opacity .16s ease,transform .18s cubic-bezier(.2,0,.2,1);
+  transform:translateY(-10px);
+  transition:opacity .18s ease,transform .22s cubic-bezier(.2,0,.2,1);
 }
 #catDropPanel.show{
   display:flex;
@@ -1429,46 +1429,46 @@ html.nav-mode-top .src-row-top{
   transform:translateY(0);
 }
 #catDropPanel .drop-card{
-  margin:0 12px;
-  max-width:calc(100% - 24px);
+  margin:0 14px;
+  max-width:calc(100% - 28px);
   background:
-    linear-gradient(160deg, rgba(28,31,38,.97) 0%, rgba(18,21,27,.97) 100%);
-  border:1px solid rgba(255,255,255,.14);
-  border-radius:18px;
+    linear-gradient(160deg, rgba(30,34,42,.98) 0%, rgba(18,21,27,.98) 100%);
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:22px;
   box-shadow:
     0 1px 0 rgba(255,255,255,.06) inset,
-    0 18px 50px rgba(0,0,0,.55),
-    0 4px 14px rgba(0,0,0,.4);
-  backdrop-filter:blur(26px) saturate(1.6);
-  -webkit-backdrop-filter:blur(26px) saturate(1.6);
-  padding:10px 8px 8px;
+    0 22px 60px rgba(0,0,0,.60),
+    0 6px 18px rgba(0,0,0,.45);
+  backdrop-filter:blur(30px) saturate(1.6);
+  -webkit-backdrop-filter:blur(30px) saturate(1.6);
+  padding:14px 10px 12px;
   display:flex;
   flex-wrap:wrap;
-  gap:6px;
+  gap:8px;
   align-items:center;
   justify-content:flex-start;
 }
 #catDropPanel .drop-card .drop-title{
   width:100%;
-  font-size:11px;
+  font-size:13px;
   font-weight:700;
-  letter-spacing:.4px;
-  color:rgba(255,255,255,.45);
-  padding:2px 10px 6px;
+  letter-spacing:.5px;
+  color:rgba(255,255,255,.55);
+  padding:2px 12px 8px;
   text-transform:uppercase;
 }
 #catDropPanel .drop-chip{
   white-space:nowrap;
   cursor:pointer;
   flex-shrink:0;
-  font-size:14px;
-  font-weight:500;
-  color:rgba(255,255,255,.85);
-  background:rgba(255,255,255,.08);
+  font-size:16px;
+  font-weight:600;
+  color:rgba(255,255,255,.88);
+  background:rgba(255,255,255,.10);
   border:none;
   border-radius:999px;
-  padding:7px 13px;
-  min-height:32px;
+  padding:10px 17px;
+  min-height:42px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
@@ -1477,13 +1477,13 @@ html.nav-mode-top .src-row-top{
   touch-action:manipulation;
 }
 #catDropPanel .drop-chip:active{
-  transform:scale(.94);
-  background:rgba(255,255,255,.18);
+  transform:scale(.93);
+  background:rgba(255,255,255,.20);
 }
 #catDropPanel .drop-chip.active{
   color:#fff;
   font-weight:700;
-  background:rgba(255,255,255,0.20);
+  background:rgba(255,255,255,0.24);
 }
 /* 面板位置：贴在一级 chips 行下方（dock 顶栏模式），避开底坞。
    top 由 JS 按 navrow 实际底部动态写入内联样式，这里只给 z-index 与模式专属底距 */
