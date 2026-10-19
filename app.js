@@ -11479,17 +11479,20 @@ const PAN_CONFIG={
   panChannels:[],
   panPlugins:[]
 };
+// 盘搜候选域名（恢复默认时按此顺序尝试，取第一个可用的）；用户手动保存后始终保留，不再自动恢复。
+const PAN_DEFAULT_APIS=['https://so.252035.xyz','http://luosz.top:2000'];
+const PAN_DEFAULT_API=PAN_DEFAULT_APIS[0];
 // 盘搜地址持久化：首次使用默认 https://so.252035.xyz；用户手动输入并保存后始终保留，不再自动恢复默认。
 try{
   const saved=localStorage.getItem('wo_pan_api');
   if(saved && saved.trim()){
     PAN_CONFIG.apiBase=saved.trim();
   }else{
-    PAN_CONFIG.apiBase='https://so.252035.xyz';
-    localStorage.setItem('wo_pan_api','https://so.252035.xyz');
+    PAN_CONFIG.apiBase=PAN_DEFAULT_API;
+    localStorage.setItem('wo_pan_api',PAN_DEFAULT_API);
   }
 }catch(e){
-  PAN_CONFIG.apiBase='https://so.252035.xyz';
+  PAN_CONFIG.apiBase=PAN_DEFAULT_API;
 }
 try{ const t=JSON.parse(localStorage.getItem('wo_pan_types')||'null'); if(Array.isArray(t)&&t.length) PAN_CONFIG.diskTypes=t; }catch(e){}
 try{ const c=JSON.parse(localStorage.getItem('wo_pan_channels')||'null'); if(Array.isArray(c)) PAN_CONFIG.panChannels=c; }catch(e){}
