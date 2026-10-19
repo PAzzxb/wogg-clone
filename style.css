@@ -858,8 +858,8 @@ html.nav-mode-top .nav-filter .chip{
   mask-image:none !important;
 }
 html.nav-mode-top .nav-filter .chip.active{
-  color:#111 !important;
-  background:#fff !important;
+  color:#fff !important;
+  background:rgba(255,255,255,0.18) !important;
   font-weight:700 !important;
   opacity:1 !important;
   filter:none !important;
@@ -1006,11 +1006,11 @@ html.nav-mode-top .nav-filter .chip.active{
   min-height:38px;
   max-height:38px;
   border-radius:999px;
-  background:#fff !important;
+  background:rgba(255,255,255,0.18) !important;
   border:none !important;
   border-color:transparent !important;
-  box-shadow:0 1px 3px rgba(0,0,0,0.1) !important;
-  color:#111 !important;
+  box-shadow:0 1px 3px rgba(0,0,0,0.3) !important;
+  color:#fff !important;
   font-size:13px;
   font-weight:600;
   line-height:1;
@@ -1035,7 +1035,7 @@ html.nav-mode-top .nav-filter .chip.active{
   border:0;
   border-color:transparent;
   box-shadow:none;
-  color:#000;
+  color:#fff;
   font-size:14px;
   font-weight:600;
   line-height:1;
@@ -1047,9 +1047,9 @@ html.nav-mode-top .nav-filter .chip.active{
   pointer-events:auto;
   max-width:180px;
 }
-/* 展开态非选中：纯黑字，白玻璃上清晰可读 */
+/* 展开态非选中：白字，深色背景上清晰可读 */
 .src-row.expanded .src-tab:not(.on){
-  color:#000;
+  color:rgba(255,255,255,0.72);
   background:transparent;
   border:none;
   box-shadow:none;
@@ -1235,13 +1235,13 @@ html.nav-mode-top .nav-filter .chip.active{
   background:transparent;border:0;padding:0;
   width:100%;height:100%;
   display:flex;align-items:center;justify-content:center;
-  color:rgba(0,0,0,0.52);
+  color:rgba(255,255,255,0.75);
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
 .search-pill-icon svg{
   width:27px;height:27px;
-  color:rgba(0,0,0,0.52);
+  color:rgba(255,255,255,0.75);
   display:block;
   shape-rendering:geometricPrecision;
   transform:translateZ(0);
@@ -1340,9 +1340,9 @@ html.nav-mode-top .nav-filter .chip.active{
   user-select:none;
 }
 .chip.active{
-  color:#111;
+  color:#fff;
   font-weight:700;
-  background:#fff;
+  background:rgba(255,255,255,0.18);
   border:none;
   border-radius:999px;
   box-shadow:none;
@@ -2029,14 +2029,14 @@ html.nav-mode-top .navrow{
   white-space:nowrap;
   display:inline-flex;align-items:center;transition:background .15s,color .15s;
 }
-.det-res-tab.active{color:#111;background:#fff}
+.det-res-tab.active{color:#fff;background:rgba(255,255,255,0.18)}
 .det-res-tab em{
   font-style:normal;margin-left:6px;padding:1px 7px;border-radius:999px;
   font-size:11px;font-weight:var(--fw-strong);color:rgba(255,255,255,.7);
   background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.14);
 }
 .det-res-tab.active em{
-  color:#111;background:rgba(0,0,0,.08);border-color:rgba(0,0,0,.08);
+  color:#fff;background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.18);
 }
 .det-res-pane[hidden]{display:none}
 .det-collapse-body{display:none;padding:0 14px 12px;min-height:0;flex:1 1 auto;overflow:hidden}
@@ -2247,8 +2247,8 @@ html.nav-mode-top .navrow{
 @media(hover:hover){.copy-btn:hover{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.2)}}
 .pan-open-btn{
   height:30px;padding:0 14px;border-radius:var(--radius-full);
-  background:#fff;
-  color:#111;font-size:12px;font-weight:var(--fw-strong);cursor:pointer;
+  background:rgba(255,255,255,0.18);
+  color:#fff;font-size:12px;font-weight:var(--fw-strong);cursor:pointer;
   box-shadow:none;
   display:inline-flex;align-items:center;
   border:none;
@@ -2359,15 +2359,15 @@ textarea.custom-modal-input{
   background:rgba(255,255,255,.18);
 }
 .custom-modal-btn.accent{
-  background:#fff;
-  color:#111;
+  background:rgba(255,255,255,0.18);
+  color:#fff;
   border:1px solid transparent;
-  box-shadow:0 2px 10px rgba(0,0,0,.18);
+  box-shadow:0 2px 10px rgba(0,0,0,.30);
   font-weight:var(--fw-display);
 }
 .custom-modal-btn.accent:active{
-  background:rgba(255,255,255,.92);
-  box-shadow:0 1px 6px rgba(0,0,0,.14);
+  background:rgba(255,255,255,0.28);
+  box-shadow:0 1px 6px rgba(0,0,0,.20);
   transform:scale(.96);
 }
 /* 导航模式切换：统一胶囊按钮 */
@@ -2388,10 +2388,10 @@ textarea.custom-modal-input{
 }
 .nav-mode-switch button:active{transform:scale(.97)}
 .nav-mode-switch button.on{
-  background:#fff;
-  color:#111;
+  background:rgba(255,255,255,0.18);
+  color:#fff;
   border-color:transparent;
-  box-shadow:0 2px 10px rgba(0,0,0,.18);
+  box-shadow:0 2px 10px rgba(0,0,0,.30);
 }
 /* ===== 盘搜：网盘类型多选 ===== */
 .pan-type-cfg{margin-top:14px}
@@ -2438,8 +2438,8 @@ textarea.custom-modal-input{
   -webkit-tap-highlight-color:transparent;
 }
 .pan-search-tab.active{
-  color:#111 !important;
-  background:#fff !important;
+  color:#fff !important;
+  background:rgba(255,255,255,0.18) !important;
   font-weight:700;
 }
 .pan-search-status{
@@ -2628,7 +2628,7 @@ html.no-aspect-ratio .skel-poster{height:0;padding-bottom:150%}
   .det-play-btn:hover{opacity:.92}
   .tab:hover{background:rgba(50,60,74,.9);color:rgba(255,255,255,.75)}
   .chip:hover{background:rgba(255,255,255,.20);color:#fff}
-  .chip.active:hover{background:#fff;color:#111}
+  .chip.active:hover{background:rgba(255,255,255,0.30);color:#fff}
 }
 /* ========== 回顶按钮：iOS 悬浮球风格（右下角）========== */
 #backTop{
@@ -2750,10 +2750,10 @@ body.sheet-open #backTop{opacity:0!important;pointer-events:none!important}
   border:1px solid transparent !important;
 }
 .det-res-tab.active{
-  background:#fff !important;
+  background:rgba(255,255,255,0.18) !important;
   border-color:transparent !important;
   box-shadow:none !important;
-  color:#111 !important;
+  color:#fff !important;
 }
 .pan-item{
   backdrop-filter:blur(12px);
@@ -2818,14 +2818,14 @@ body.sheet-open #backTop{opacity:0!important;pointer-events:none!important}
   border-radius:999px !important;
 }
 .src-row.expanded .src-tab.on{
-  background:#fff !important;
+  background:rgba(255,255,255,0.18) !important;
   border:none !important;
-  box-shadow:0 1px 3px rgba(0,0,0,0.1) !important;
-  color:#111 !important;
+  box-shadow:0 1px 3px rgba(0,0,0,0.30) !important;
+  color:#fff !important;
 }
 .src-row.expanded .src-tab:not(.on){
-  /* 未选中：深灰字，白玻璃上清晰可读 */
-  color:rgba(0,0,0,0.72) !important;
+  /* 未选中：白字，深色背景上清晰可读 */
+  color:rgba(255,255,255,0.72) !important;
   background:transparent !important;
   border:none !important;
   box-shadow:none !important;
@@ -3185,6 +3185,6 @@ body.sheet-open #backTop{opacity:0!important;pointer-events:none!important}
 #browserHlsMask video{width:min(960px,96vw);max-height:62vh;background:#000;border-radius:10px;outline:none}
 #browserHlsMask .bhp-eps{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:min(960px,96vw);max-height:22vh;overflow-y:auto;margin-top:12px;padding:4px}
 #browserHlsMask .bhp-ep{padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;font-size:13px;border:none;cursor:pointer}
-#browserHlsMask .bhp-ep.on{background:#fff;color:#111;font-weight:700}
+#browserHlsMask .bhp-ep.on{background:rgba(255,255,255,0.18);color:#fff;font-weight:700}
 #browserHlsMask .bhp-close{position:absolute;top:calc(var(--safe-top,0px) + 14px);right:16px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;border:none;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 #browserHlsMask .bhp-tip{color:rgba(255,255,255,.55);font-size:12px;margin-top:8px;text-align:center}

@@ -12247,7 +12247,7 @@ function openBrowserHlsPlayer(title, epList, headers){
 #browserHlsMask video{width:min(960px,96vw);max-height:62vh;background:#000;border-radius:10px;outline:none}
 #browserHlsMask .bhp-eps{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:min(960px,96vw);max-height:22vh;overflow-y:auto;margin-top:12px;padding:4px}
 #browserHlsMask .bhp-ep{padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.12);color:#fff;font-size:13px;border:none;cursor:pointer}
-#browserHlsMask .bhp-ep.on{background:#fff;color:#111;font-weight:700}
+#browserHlsMask .bhp-ep.on{background:rgba(255,255,255,0.18);color:#fff;font-weight:700}
 #browserHlsMask .bhp-close{position:absolute;top:calc(var(--safe-top,0px) + 14px);right:16px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;border:none;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 #browserHlsMask .bhp-tip{color:rgba(255,255,255,.55);font-size:12px;margin-top:8px;text-align:center}
 </style>
