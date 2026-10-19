@@ -10442,8 +10442,7 @@ async function parseDetail(v){
   if(v&&(v.siteId==='huangguoai'||(v.href&&String(v.href).indexOf('huangguoai://')===0))) return huangguoaiDetail(v);
   if(v&&(v.siteId==='flickreels'||(v.href&&String(v.href).indexOf('flickreels://')===0))) return flickreelsDetail(v);
   if(v&&(v.siteId==='cg57'||(v.href&&String(v.href).indexOf('chigua57://')===0)||(v.href&&/57cg4\.com\/events\//i.test(String(v.href))))) return chigua57Detail(v);
-  if(v&&(v.siteId==='hdhive'||v._hdhive||(v.href&&String(v.href).indexOf('hdhive://')===0))){
-    let sources=v.sources||[v];
+  let sources=v.sources||[v];
   // 并发请求所有站源（最多5个），不再一个个串行等，详情页打开速度≈最慢那一个源，而不是全部加起来
   let results=await Promise.all(sources.slice(0,10).map(async src=>{
     let s=SITES.find(x=>x.id===src.siteId)||site();
