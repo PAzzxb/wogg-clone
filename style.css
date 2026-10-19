@@ -1389,6 +1389,117 @@ html.nav-mode-top .nav-filter .chip.active{
 html.nav-mode-top .src-row-top{
   order:1;
 }
+/* ===== 二级分类下拉面板：收进一个按钮里（对齐用户需求） ===== */
+/* 分组 chip：带下拉三角，视觉与普通 chip 一致 */
+.chip.has-sub{
+  padding-right:26px;
+  position:relative;
+}
+.chip.has-sub::after{
+  content:'';
+  position:absolute;
+  right:8px;top:50%;
+  width:0;height:0;
+  border-left:4px solid transparent;
+  border-right:4px solid transparent;
+  border-top:5px solid rgba(255,255,255,.55);
+  transform:translateY(-2px);
+  transition:transform .22s ease;
+}
+.chip.has-sub.drop-open::after{
+  transform:translateY(1px) rotate(180deg);
+  border-top-color:rgba(255,255,255,.85);
+}
+/* 下拉面板：固定在一级 chips 行下方，不随页面滚动，不与站源坞重叠 */
+#catDropPanel{
+  position:fixed;
+  left:0;right:0;
+  z-index:60;
+  display:flex;
+  justify-content:center;
+  pointer-events:none;
+  opacity:0;
+  transform:translateY(-8px);
+  transition:opacity .16s ease,transform .18s cubic-bezier(.2,0,.2,1);
+}
+#catDropPanel.show{
+  display:flex;
+  opacity:1;
+  pointer-events:auto;
+  transform:translateY(0);
+}
+#catDropPanel .drop-card{
+  margin:0 12px;
+  max-width:calc(100% - 24px);
+  background:
+    linear-gradient(160deg, rgba(28,31,38,.97) 0%, rgba(18,21,27,.97) 100%);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:18px;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,.06) inset,
+    0 18px 50px rgba(0,0,0,.55),
+    0 4px 14px rgba(0,0,0,.4);
+  backdrop-filter:blur(26px) saturate(1.6);
+  -webkit-backdrop-filter:blur(26px) saturate(1.6);
+  padding:10px 8px 8px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  align-items:center;
+  justify-content:flex-start;
+}
+#catDropPanel .drop-card .drop-title{
+  width:100%;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.4px;
+  color:rgba(255,255,255,.45);
+  padding:2px 10px 6px;
+  text-transform:uppercase;
+}
+#catDropPanel .drop-chip{
+  white-space:nowrap;
+  cursor:pointer;
+  flex-shrink:0;
+  font-size:14px;
+  font-weight:500;
+  color:rgba(255,255,255,.85);
+  background:rgba(255,255,255,.08);
+  border:none;
+  border-radius:999px;
+  padding:7px 13px;
+  min-height:32px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  box-sizing:border-box;
+  transition:background .18s ease,color .18s ease,transform .1s ease;
+  touch-action:manipulation;
+}
+#catDropPanel .drop-chip:active{
+  transform:scale(.94);
+  background:rgba(255,255,255,.18);
+}
+#catDropPanel .drop-chip.active{
+  color:#fff;
+  font-weight:700;
+  background:rgba(255,255,255,0.20);
+}
+/* 面板位置：贴在一级 chips 行下方（dock 顶栏模式），避开底坞。
+   top 由 JS 按 navrow 实际底部动态写入内联样式，这里只给 z-index 与模式专属底距 */
+html.nav-mode-dock #catDropPanel{
+  top:calc(var(--nav-h, 114px) + 4px);
+}
+html.nav-mode-top #catDropPanel{
+  /* 顶栏 navrow 较矮，JS 写入的内联 top 优先级高于此规则，此处仅作兜底 */
+  top:calc(var(--nav-h, 46px) + 4px);
+}
+/* 搜索聚焦时：下拉面板也模糊，不浮在遮罩上 */
+html.search-focused #catDropPanel{
+  filter:blur(12px) brightness(0.42) saturate(0.85);
+  opacity:.5;
+  pointer-events:none;
+}
 /* 顶栏展开站源时隐藏二级分类，避免挤压站源横排 */
 html.nav-mode-top .navrow.nav-src-open > .subchips,
 html.nav-mode-top .navrow.nav-search-open > .subchips{

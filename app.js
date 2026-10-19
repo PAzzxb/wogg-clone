@@ -2068,7 +2068,13 @@ function cardFrom(el,base,site){
   }
 }
 // ====== 自动抓取站点真实分类 ======
-function firstRealCat(cats){const c=(cats||[]).find(x=>x[0]!=='history'&&x[0]!=='fav');return (c||cats[0]||['',''])[0]}
+function firstRealCat(cats){
+  // 各站「剧集」命名不统一（剧集/电视剧/剧），有则默认锁在它上，不再锁到臻彩/热门
+  const pref=(cats||[]).find(x=>x&&x[1]&&/剧集|电视剧/.test(x[1]));
+  if(pref) return pref[0];
+  const c=(cats||[]).find(x=>x[0]!=='history'&&x[0]!=='fav');
+  return (c||cats[0]||['',''])[0]
+}
 // 二级分类（6V 等站）：一级只是分组（电影/剧集），真正请求落在子分类上
 function catGroupOf(s,id){const g=(s&&s.catGroups)||{};for(const k in g){if((g[k]||[]).some(x=>x[0]===id))return k}return ''}
 function resolveCat(s,id){const g=(s&&s.catGroups||{})[id];return (g&&g.length)?g[0][0]:id}
@@ -2455,15 +2461,53 @@ function renderChips(){
     if(!activeCat&&cats[0]) activeCat=resolveCat(s,cats[0][0]);
   }
   const grp=catGroupOf(s,activeCat);
-  chips.innerHTML=cats.map(c=>`<button class="chip ${(activeCat===c[0]||grp===c[0])?'active':''}" data-id="${c[0]}">${c[1]}</button>`).join('');
-  chips.querySelectorAll('.chip').forEach(b=>b.onclick=()=>activateCategory(b.dataset.id));
+  chips.innerHTML=cats.map(c=>{
+    const hasSub=!!(s.catGroups&&s.catGroups[c[0]]);
+    return `<button class="chip ${(activeCat===c[0]||grp===c[0])?'active':''}${hasSub?' has-sub':''}" data-id="${c[0]}" data-grp="${hasSub?c[0]:''}">${c[1]}</button>`;
+  }).join('');
+  chips.querySelectorAll('.chip').forEach(b=>{
+    b.onclick=(e)=>{
+      e.stopPropagation();
+      const hasSub=b.classList.contains('has-sub');
+      const g=b.dataset.grp;
+      if(hasSub && s.catGroups && s.catGroups[g] && s.catGroups[g].length){
+        // 有二级分类：切换/展开下拉面板（不直接切换分类，避免空列表）
+        if(!b.classList.contains('active')) activateCategory(b.dataset.id);
+        toggleDropPanel();
+      }else{
+        activateCategory(b.dataset.id);
+        closeDropPanel();
+      }
+    };
+  });
+  // 父分组 chip：若当前选中的分类属于它的二级 → 加 drop-open 高亮三角
+  const parentGrp=catGroupOf(s,activeCat);
+  chips.querySelectorAll('.chip.has-sub').forEach(b=>{
+    b.classList.toggle('drop-open', b.dataset.grp===parentGrp);
+  });
   let act=chips.querySelector('.chip.active');
   // 仍无高亮：兜底点亮第一个芯片并同步 activeCat
   if(!act && cats[0]){
     activeCat=resolveCat(s,cats[0][0]);
     const g2=catGroupOf(s,activeCat);
-    chips.innerHTML=cats.map(c=>`<button class="chip ${(activeCat===c[0]||g2===c[0])?'active':''}" data-id="${c[0]}">${c[1]}</button>`).join('');
-    chips.querySelectorAll('.chip').forEach(b=>b.onclick=()=>activateCategory(b.dataset.id));
+    chips.innerHTML=cats.map(c=>{
+      const hasSub=!!(s.catGroups&&s.catGroups[c[0]]);
+      return `<button class="chip ${(activeCat===c[0]||g2===c[0])?'active':''}${hasSub?' has-sub':''}" data-id="${c[0]}" data-grp="${hasSub?c[0]:''}">${c[1]}</button>`;
+    }).join('');
+    chips.querySelectorAll('.chip').forEach(b=>{
+      b.onclick=(e)=>{
+        e.stopPropagation();
+        const hasSub=b.classList.contains('has-sub');
+        const g=b.dataset.grp;
+        if(hasSub && s.catGroups && s.catGroups[g] && s.catGroups[g].length){
+          if(!b.classList.contains('active')) activateCategory(b.dataset.id);
+          toggleDropPanel();
+        }else{
+          activateCategory(b.dataset.id);
+          closeDropPanel();
+        }
+      };
+    });
     act=chips.querySelector('.chip.active');
   }
   if(act) requestAnimationFrame(function(){ centerChipInScroller(act); });
@@ -2475,13 +2519,60 @@ function renderSubChips(s,grp){
   const row=$('#chipsSub'); if(!row)return;
   const items=(s&&s.catGroups&&grp)?(s.catGroups[grp]||[]):[];
   if(!items.length){ row.hidden=true; row.innerHTML=''; return; }
-  row.hidden=false;
-  row.innerHTML=items.map(c=>`<button type="button" class="chip ${activeCat===c[0]?'active':''}" data-id="${c[0]}">${c[1]}</button>`).join('');
-  row.querySelectorAll('.chip').forEach(b=>b.onclick=()=>activateCategory(b.dataset.id));
-  const a=row.querySelector('.chip.active');
-  if(a) requestAnimationFrame(function(){ centerChipInScroller(a); });
-  bindNavHScrolls();
+  // 二级分类已收进下拉面板：横滑行始终隐藏，避免与下拉面板重复
+  row.hidden=true; row.innerHTML='';
+  const panel=$('#catDropPanel'); if(!panel) return;
+  const cur=activeCat;
+  panel.innerHTML=`<div class="drop-card">
+    <span class="drop-title">${grp||''}</span>
+    ${items.map(c=>`<button type="button" class="drop-chip ${cur===c[0]?'active':''}" data-id="${c[0]}" data-grp="${grp}">${c[1]}</button>`).join('')}
+  </div>`;
+  panel.querySelectorAll('.drop-chip').forEach(b=>{
+    b.onclick=(e)=>{
+      e.stopPropagation();
+      activateCategory(b.dataset.id);
+      closeDropPanel();
+    };
+  });
+  positionDropPanel();
 }
+// 下拉面板位置：贴在一级 chips 行下方（不随页面滚动 → fixed）
+function positionDropPanel(){
+  const panel=$('#catDropPanel'); const navrow=$('#navMain');
+  if(!panel||!navrow) return;
+  const r=navrow.getBoundingClientRect();
+  const isTop=document.documentElement.classList.contains('nav-mode-top');
+  const navH=isTop?r.height:r.height;
+  document.documentElement.style.setProperty('--nav-h', navH+'px');
+  panel.style.top=(r.bottom)+'px';
+}
+function openDropPanel(){
+  const panel=$('#catDropPanel'); if(!panel) return;
+  positionDropPanel();
+  panel.hidden=false;
+  requestAnimationFrame(()=>panel.classList.add('show'));
+}
+function closeDropPanel(){
+  const panel=$('#catDropPanel'); if(!panel) return;
+  panel.classList.remove('show');
+  setTimeout(()=>{ panel.hidden=true; }, 180);
+}
+function toggleDropPanel(){
+  const panel=$('#catDropPanel');
+  if(!panel||panel.hidden) openDropPanel();
+  else closeDropPanel();
+}
+// 点击外部收起下拉面板
+(function(){
+  document.addEventListener('click',(e)=>{
+    const panel=$('#catDropPanel');
+    if(!panel||panel.hidden||!panel.classList.contains('show')) return;
+    if(panel.contains(e.target)) return;
+    const chip=e.target.closest && e.target.closest('.chip.has-sub');
+    if(chip) return;
+    closeDropPanel();
+  },true);
+})();
 // 切换分类（点击胶囊 / 左右滑动都走这里）。slideDir：'l' 右滑出现下一类，'r' 左滑出现上一类
 function activateCategory(id,slideDir){
   if(id==null)return;
