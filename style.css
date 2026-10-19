@@ -790,9 +790,9 @@ html.nav-mode-top .navrow.nav-src-open > .src-row-top > .src-tab-top:nth-child(n
   to{ opacity:1; transform:none; }
 }
 html.nav-mode-top .navrow.nav-src-open > .src-row-top > .src-tab-top.on{
-  color:#111;
+  color:#fff;
   font-weight:700;
-  background:#fff;
+  background:rgba(255,255,255,0.15);
 }
 html.nav-mode-top .navrow.nav-src-open > .src-row-top > .src-tab-top:active{
   transform:scale(.96);
@@ -938,7 +938,7 @@ html.nav-mode-top .nav-filter .chip.active{
   cursor:pointer;
   font-size:13px;
   font-weight:600;
-  color:rgba(0,0,0,0.52);
+  color:rgba(255,255,255,0.52);
   padding:7px 18px;
   background:transparent;
   border:0 solid transparent;
@@ -958,7 +958,7 @@ html.nav-mode-top .nav-filter .chip.active{
 }
 /* 收起时只显示选中项 */
 .src-tab.on{
-  color:rgba(0,0,0,0.88);
+  color:rgba(255,255,255,0.92);
   font-weight:800;
   opacity:1;
   pointer-events:auto;
@@ -1068,8 +1068,7 @@ html.nav-mode-top .nav-filter .chip.active{
 .src-sep{display:none}
 
 /* ===== 底部联体胶囊容器：站源（左）+ 设置 + 搜索 ===== */
-/* 底坞：扁平液态玻璃（轻高光） */
-/* 底坞：中性磨砂胶囊（Control Center 风格，无彩色叠层） */
+/* 底坞：夜间模式 - 深色磨砂胶囊 */
 .bottom-dock{
   position:fixed;
   bottom:calc(var(--safe-bottom) + 12px);
@@ -1080,18 +1079,18 @@ html.nav-mode-top .nav-filter .chip.active{
   align-items:center;
   gap:0;
   pointer-events:none;
-  /* iOS 白底毛玻璃：半透白 + 高饱和模糊，接近系统导航/控制中心浅色胶囊 */
+  /* 夜间模式：深色半透明 + 模糊，接近系统深色导航/控制中心胶囊 */
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.82) 0%, rgba(255,255,255,0.68) 100%);
-  border:0.5px solid rgba(255,255,255,0.55);
+    linear-gradient(180deg, rgba(28,28,36,0.88) 0%, rgba(18,18,24,0.82) 100%);
+  border:0.5px solid rgba(255,255,255,0.12);
   border-radius:999px;
   box-shadow:
-    0 1px 0 rgba(255,255,255,0.75) inset,
-    0 -0.5px 0 rgba(0,0,0,0.04) inset,
-    0 8px 28px rgba(0,0,0,0.18),
-    0 2px 8px rgba(0,0,0,0.08);
-  -webkit-backdrop-filter:blur(40px) saturate(180%) brightness(1.08);
-  backdrop-filter:blur(40px) saturate(180%) brightness(1.08);
+    0 1px 0 rgba(255,255,255,0.10) inset,
+    0 -0.5px 0 rgba(0,0,0,0.30) inset,
+    0 8px 28px rgba(0,0,0,0.40),
+    0 2px 8px rgba(0,0,0,0.28);
+  -webkit-backdrop-filter:blur(40px) saturate(140%) brightness(0.85);
+  backdrop-filter:blur(40px) saturate(140%) brightness(0.85);
   height:62px;
   min-height:62px;
   padding:0 6px;
@@ -1107,22 +1106,22 @@ html.nav-mode-top .nav-filter .chip.active{
 }
 .bottom-dock.expanded{
   background:
-    linear-gradient(180deg, rgba(255,255,255,0.88) 0%, rgba(255,255,255,0.74) 100%);
-  border-color:rgba(255,255,255,0.62);
+    linear-gradient(180deg, rgba(36,36,44,0.92) 0%, rgba(22,22,30,0.88) 100%);
+  border-color:rgba(255,255,255,0.16);
   box-shadow:
-    0 1px 0 rgba(255,255,255,0.8) inset,
-    0 -0.5px 0 rgba(0,0,0,0.05) inset,
-    0 10px 32px rgba(0,0,0,0.2),
-    0 3px 10px rgba(0,0,0,0.1);
-  -webkit-backdrop-filter:blur(48px) saturate(190%) brightness(1.1);
-  backdrop-filter:blur(48px) saturate(190%) brightness(1.1);
+    0 1px 0 rgba(255,255,255,0.12) inset,
+    0 -0.5px 0 rgba(0,0,0,0.35) inset,
+    0 10px 32px rgba(0,0,0,0.48),
+    0 3px 10px rgba(0,0,0,0.32);
+  -webkit-backdrop-filter:blur(48px) saturate(150%) brightness(0.80);
+  backdrop-filter:blur(48px) saturate(150%) brightness(0.80);
 }
 
 /* 分隔线 */
 .dock-sep{
   width:1px;
   height:18px;
-  background:rgba(0,0,0,0.12);
+  background:rgba(255,255,255,0.14);
   flex-shrink:0;
   pointer-events:none;
   border-radius:1px;
@@ -1143,7 +1142,7 @@ html.nav-mode-top .nav-filter .chip.active{
   flex-shrink:0;
   -webkit-tap-highlight-color:transparent;
 }
-.search-pill:active{background:rgba(0,0,0,0.06)}
+.search-pill:active{background:rgba(255,255,255,0.08)}
 /* ===== 设置 ===== */
 .settings-pill{
   pointer-events:auto;
@@ -1160,18 +1159,18 @@ html.nav-mode-top .nav-filter .chip.active{
   overflow:visible;
   -webkit-tap-highlight-color:transparent;
 }
-.settings-pill:active{background:rgba(0,0,0,0.06)}
+.settings-pill:active{background:rgba(255,255,255,0.08)}
 .settings-pill-icon{
   background:transparent;border:0;padding:0;
   width:100%;height:100%;
   display:flex;align-items:center;justify-content:center;
-  color:rgba(0,0,0,0.52);
+  color:rgba(255,255,255,0.75);
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
 .settings-pill-icon svg{
   width:27px;height:27px;
-  color:rgba(0,0,0,0.52);
+  color:rgba(255,255,255,0.75);
   display:block;
   shape-rendering:geometricPrecision;
   transform:translateZ(0);
@@ -1212,18 +1211,18 @@ html.nav-mode-top .nav-filter .chip.active{
   flex-shrink:0;
   -webkit-tap-highlight-color:transparent;
 }
-.history-pill:active{background:rgba(0,0,0,0.06)}
+.history-pill:active{background:rgba(255,255,255,0.08)}
 .history-pill-icon{
   background:transparent;border:0;padding:0;
   width:100%;height:100%;
   display:flex;align-items:center;justify-content:center;
-  color:rgba(0,0,0,0.52);
+  color:rgba(255,255,255,0.75);
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
 }
 .history-pill-icon svg{
   width:27px;height:27px;
-  color:rgba(0,0,0,0.52);
+  color:rgba(255,255,255,0.75);
   display:block;
   shape-rendering:geometricPrecision;
   transform:translateZ(0);

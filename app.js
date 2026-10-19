@@ -1025,15 +1025,6 @@ function openSiteDomainConfig(){
         }
       };
     }
-    // 宝宝巴士跳转频道（直接浏览器打开）
-    const bbBtn=document.getElementById('bbChannelBtn');
-    if(bbBtn){
-      bbBtn.onclick=function(e){
-        e.preventDefault(); e.stopPropagation();
-        const url='https://t.me/nostremby';
-        try{ window.open(url,'_blank'); }catch(e1){ try{ location.href=url; }catch(e2){} }
-      };
-    }
     let done=false;
     const finish=(ok, reset)=>{
       if(done)return; done=true;
@@ -1041,7 +1032,6 @@ function openSiteDomainConfig(){
       okBtn.onclick=null; cancelBtn.onclick=null; mask.onclick=null; resetBtn.onclick=null;
       if(syncBtn) syncBtn.onclick=null;
       if(netRefreshBtn) netRefreshBtn.onclick=null;
-      if(bbBtn) bbBtn.onclick=null;
       input.onkeydown=null;
       if(ok){
         // 黄豆域名不写入覆盖
@@ -2569,7 +2559,7 @@ function card(v,i){
         }
         return '<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(v.pic)+'" onload="window._posterOk&&window._posterOk(this)" onerror="window._posterFail&&window._posterFail(this)">';
       }
-      return '<div class="noimg">宝宝巴士</div>';
+      return '<div class="noimg">溜溜</div>';
     })()}
     ${statusTag}
     ${badgeHtml}
@@ -8307,7 +8297,7 @@ window._posterFail=function(img){
   if(!img||img.dataset.failed)return;
   // 黄果加密封面：等解密，不立刻占位/TMDB
   if(img.getAttribute('data-hg-poster') && img.getAttribute('data-hg-done')!=='1') return;
-  // 吃瓜：等 Referer 代理，禁止立刻换成「宝宝巴士」（否则封面先出再闪掉）
+  // 吃瓜：等 Referer 代理，禁止立刻换成「溜溜」（否则封面先出再闪掉）
   if(img.getAttribute('data-cg57-src') && img.getAttribute('data-cg57-done')!=='1'){
     img.style.opacity='0';
     try{ if(typeof chigua57HydrateCovers==='function') setTimeout(function(){ chigua57HydrateCovers(img.closest('.card')||document); }, 40); }catch(e){}
