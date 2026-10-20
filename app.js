@@ -140,6 +140,8 @@ function _exitSearchToHome() {
 function _doCloseSheet() {
   const sheet = $('#sheet');
   _currentDetailItem=null;   // 作废任何仍在 await 的 _loadDetailContent
+  _initCg51HeroCarousel._inited=false;   // 下次打开详情允许重新初始化
+  if(_cg51HeroRot.timer){clearInterval(_cg51HeroRot.timer);_cg51HeroRot.timer=null;}
   if (!sheet.classList.contains('active')) return;
   sheet.classList.remove('landscape-mode','res-open','sheet-anim-done');
   try{ document.querySelectorAll('body > .det-collapse-row').forEach(function(el){ el.remove(); }); }catch(e){}
@@ -7609,6 +7611,95 @@ function _bgProgressiveSet(layer,entry,seq){
     // 静默预热 fallback，仅在 primary 长期未显示时不强制切换，避免二次闪
   }
 }
+/* 51吃瓜：全屏海报区左右切换轮播（箭头/圆点/触摸滑动），复用 setBackdrops 的 A/B crossfade 图层 */
+let _cg51HeroRot={timer:null,active:'A',seq:0};
+function _initCg51HeroCarousel(entries){
+  if(_initCg51HeroCarousel._inited) return;   // 防止同一详情重复初始化
+  _initCg51HeroCarousel._inited=true;
+  try{
+    stopBgRotation();
+    const mySeq=_bgRot.seq;
+    const A=document.getElementById('detHeroBgA'),B=document.getElementById('detHeroBgB');
+    const bg=document.getElementById('detHeroBg');
+    if(!A||!B||!entries||!entries.length) return;
+    if(bg){bg.classList.add('show');bg.dataset.bd='1';}
+    let _dotWrap=document.getElementById('cg51HeroDots');
+    if(_dotWrap){_dotWrap.remove();}
+    _dotWrap=document.createElement('div');
+    _dotWrap.id='cg51HeroDots';
+    _dotWrap.className='cg51-hero-dots';
+    bg.appendChild(_dotWrap);
+    const n=entries.length;
+    _dotWrap.innerHTML = n<=8
+      ? entries.map(function(_,i){return '<i class="cg51-hero-dot'+(i===0?' on':'')+'" data-i="'+i+'"></i>';}).join('')
+      : '<span class="cg51-hero-count">1/'+n+'</span>';
+    let _curIdx=0;
+    function go(i){
+      const cur=_bgRot.active==='A'?A:B, nxt=_bgRot.active==='A'?B:A;
+      const nextActive=_bgRot.active==='A'?'B':'A';
+      const idx=((i%n)+n)%n;
+      _curIdx=idx;
+      const u=entries[idx];
+      _bgPreload(u,mySeq,su=>{
+        if(_bgRot.seq!==mySeq)return;
+        nxt.style.backgroundImage=`url("${su}")`;
+        nxt.style.opacity='1';cur.style.opacity='0';
+        _bgRot.active=nextActive;
+        try{ syncDetFrost(su); }catch(eF){}
+      });
+      const ds=_dotWrap.querySelectorAll('.cg51-hero-dot');
+      for(let j=0;j<ds.length;j++) ds[j].classList.toggle('on',j===idx);
+      const cnt=_dotWrap.querySelector('.cg51-hero-count'); if(cnt) cnt.textContent=(idx+1)+'/'+n;
+    }
+    let _prev=document.getElementById('cg51HeroPrev'),_next=document.getElementById('cg51HeroNext');
+    if(_prev)_prev.remove();if(_next)_next.remove();
+    _prev=document.createElement('button');
+    _prev.id='cg51HeroPrev';_prev.className='cg51-hero-arrow prev';_prev.innerHTML='&#8249;';
+    _prev.addEventListener('click',function(e){e.stopPropagation();go(_curIdx-1);});
+    _next=document.createElement('button');
+    _next.id='cg51HeroNext';_next.className='cg51-hero-arrow next';_next.innerHTML='&#8250;';
+    _next.addEventListener('click',function(e){e.stopPropagation();go(_curIdx+1);});
+    bg.appendChild(_prev);bg.appendChild(_next);
+    _dotWrap.querySelectorAll('.cg51-hero-dot').forEach(function(d){
+      d.addEventListener('click',function(e){e.stopPropagation();go(parseInt(this.getAttribute('data-i'),10));});
+    });
+    let sx=0,sy=0,dragging=false;
+    bg.addEventListener('touchstart',function(e){const t=e.touches[0];sx=t.clientX;sy=t.clientY;dragging=true;},{passive:true});
+    bg.addEventListener('touchend',function(e){
+      if(!dragging)return;dragging=false;
+      const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
+      if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)){go(dx<0?_curIdx+1:_curIdx-1);}
+    });
+    bg.addEventListener('mousedown',function(e){sx=e.clientX;dragging=true;});
+    bg.addEventListener('mouseup',function(e){
+      if(!dragging)return;dragging=false;
+      const dx=e.clientX-sx;
+      if(Math.abs(dx)>50)go(dx<0?_curIdx+1:_curIdx-1);
+    });
+    document.addEventListener('keydown',function(e){
+      if(!bg.closest('.sheet.active'))return;
+      if(e.key==='ArrowLeft')go(_curIdx-1);
+      else if(e.key==='ArrowRight')go(_curIdx+1);
+    });
+    go(0);
+    _cg51HeroRot.seq=mySeq;
+    _cg51HeroRot.timer=setInterval(()=>{
+      if(document.hidden)return;
+      go(_curIdx+1);
+      _curIdx=(_curIdx+1)%n;
+    },5000);
+    const sheet=$('#sheet');
+    if(sheet){
+      const _obs=new MutationObserver(function(){
+        if(!sheet.classList.contains('active')){
+          clearInterval(_cg51HeroRot.timer);_cg51HeroRot.timer=null;
+          _obs.disconnect();
+        }
+      });
+      _obs.observe(sheet,{attributes:true,attributeFilter:['class']});
+    }
+  }catch(e){}
+}
 function setBackdrops(entries){
   stopBgRotation();   // 自增 seq，作废上一批所有游离回调
   const mySeq=_bgRot.seq;
@@ -11549,8 +11640,21 @@ async function _loadDetailContent(v){
       applyHeroUrl(sitePic);
     });
     // 海报轮播：根据横竖屏取对应无字版图集，A/B 交替 crossfade
-    imagesPromise.then(function(entries){
+    imagesPromise.then(async function(entries){
       if(_currentDetailItem!==v)return;
+      // 51吃瓜：详情页轮播图集直接用站源提取的 _cg51CarImgs（封面+正文配图），铺满全屏背景并左右切换
+      // CDN 返 binary/octet-stream，需先 fetch+Blob 水合为 blob URL 才能被 Image 加载
+      if((v.siteId==='cg51'||v._chigua51Id) && d.info && d.info._cg51CarImgs && d.info._cg51CarImgs.length){
+        const rawList=d.info._cg51CarImgs;
+        const hydrated=await Promise.all(rawList.map(function(u){
+          try{ return chigua51HydrateUrl(u); }catch(e){ return u; }
+        }));
+        if(_currentDetailItem!==v)return;
+        setBackdrops(hydrated);
+        // 51吃瓜：在全屏海报区加左右切换箭头+圆点+滑动切换，底部轮播区隐藏（已整合到海报）
+        _initCg51HeroCarousel(hydrated);
+        return;
+      }
       if(entries&&entries.length)setBackdrops(entries);
     }).catch(function(){});
     // 详情标签：优先站源元数据（年份·地区·类型·主演），TMDB 作补充
