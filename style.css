@@ -2066,9 +2066,9 @@ html.nav-mode-top .navrow{
   position:absolute;inset:0;z-index:4;
   pointer-events:none;
 }
-/* 左右箭头：居中竖排 */
+/* 左右箭头：左右各一个，垂直居中 */
 .cg51-hero-arrow{
-  position:absolute;left:50%;z-index:5;
+  position:absolute;top:50%;z-index:5;
   width:40px;height:40px;border-radius:50%;
   border:none;cursor:pointer;
   background:rgba(0,0,0,.45);color:#fff;
@@ -2078,11 +2078,12 @@ html.nav-mode-top .navrow{
   backdrop-filter:blur(4px);
   -webkit-backdrop-filter:blur(4px);
   pointer-events:auto;
+  transform:translateY(-50%);
 }
-.cg51-hero-arrow:hover{background:rgba(0,0,0,.65);transform:scale(1.08)}
-.cg51-hero-arrow:active{transform:scale(.95)}
-.cg51-hero-arrow.prev{top:calc(50% - 56px);transform:translateX(-50%)}
-.cg51-hero-arrow.next{top:calc(50% + 56px);transform:translateX(-50%)}
+.cg51-hero-arrow:hover{background:rgba(0,0,0,.65);transform:translateY(-50%) scale(1.08)}
+.cg51-hero-arrow:active{transform:translateY(-50%) scale(.95)}
+.cg51-hero-arrow.prev{left:14px}
+.cg51-hero-arrow.next{right:14px}
 /* 51吃瓜：hero 区域允许 overflow:visible，箭头不被裁切 */
 #sheet.cg51-det.landscape-mode .det-hero{
   overflow:visible !important;
