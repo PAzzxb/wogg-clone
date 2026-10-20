@@ -11766,6 +11766,7 @@ const _isCgAnyDet=_isCg51Det||_isCg57Det;
   <div class="det-bigtitle" id="detBigTitle" title="${esc(title)}">${esc(title)}</div>
 </div>
 ${(_isCg51Det)?`
+<div class="det-play-btn-wrap" id="detPlayBtnWrap"></div>
 <div class="det-intro-collapse" id="detIntroCollapse">
   <div class="det-intro-head" id="detIntroHead">
     <span class="det-intro-arrow" id="detIntroArrow">&#8250;</span>
@@ -11776,12 +11777,12 @@ ${(_isCg51Det)?`
     ${((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+'</section>':''}
   </div>
 </div>
-<div class="det-bottom-bar" id="detBottomBar">
-  <div class="cg51-video-zone" id="cg51VideoZone"></div>
-  <span class="cg51-hero-count-bottom" id="cg51HeroCount"></span>
-</div>
 `:''}
 <div class="det-genres" id="detGenres"></div>
+<div class="det-bottom-bar" id="detBottomBar">
+  ${(_isCg51Det)?'<div class="cg51-video-zone" id="cg51VideoZone"></div>':''}
+  ${(_isCg51Det)?'<span class="cg51-hero-count-bottom" id="cg51HeroCount"></span>':''}
+</div>
 <div class="det-collapse-row">
 <section class="det-collapse det-res">
 <div class="det-collapse-head">

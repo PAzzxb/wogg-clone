@@ -1791,6 +1791,10 @@ html.nav-mode-top .navrow{
   background:transparent !important;
   overflow:visible !important;
 }
+/* 非 cg51 站点：播放按钮在全屏海报上方可见（det-hero-bg z-index:38 遮住了 z-index:2 的 cta） */
+#sheet:not(.cg51-det) .det-hero-cta{
+  z-index:39 !important;
+}
 /* 51吃瓜：sheet 背景透明，让全屏海报透出来 */
 #sheet.cg51-det{
   background:transparent !important;
