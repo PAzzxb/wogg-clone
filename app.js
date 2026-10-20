@@ -140,6 +140,10 @@ function _exitSearchToHome() {
 function _doCloseSheet() {
   const sheet = $('#sheet');
   _currentDetailItem=null;   // 作废任何仍在 await 的 _loadDetailContent
+  // 关闭详情必须同时停止仍在播放的媒体（51吃瓜等）：此前只有点 X 走 closeDetail() 才会关播放器，
+  // 而返回手势 / 浏览器后退直接进 _doCloseSheet，漏了这一步 → 详情页关了、视频还在后台继续播。
+  try{ if(typeof closeBrowserHlsPlayer==='function') closeBrowserHlsPlayer(); }catch(e){}
+  try{ if(typeof stopAllMedia==='function') stopAllMedia(); }catch(e){}
   _initCg51HeroCarousel._inited=false;   // 下次打开详情允许重新初始化
   if(_cg51HeroRot.timer){clearInterval(_cg51HeroRot.timer);_cg51HeroRot.timer=null;}
   sheet.classList.remove('cg51-det','cg57-det');   // 关闭详情时移除透明标记（含 57吃瓜）
@@ -13025,6 +13029,29 @@ function closeBrowserHlsPlayer(){
   if(!mask) return;
   if(mask._destroy) try{mask._destroy()}catch(e){}
   mask.style.display='none';
+  try{ stopAllMedia(); }catch(e){}
+}
+// 停止页面上所有仍在播放的媒体（video/audio）。
+// 关闭详情时必须调用：否则详情页 UI 关了、播放器仍在后台出声继续播。
+function stopAllMedia(){
+  try{
+    document.querySelectorAll('video').forEach(function(v){
+      try{ if(!v.paused) v.pause(); }catch(e){}
+      try{ v.removeAttribute('src'); v.load(); }catch(e){}
+    });
+  }catch(e){}
+  try{
+    document.querySelectorAll('audio').forEach(function(a){
+      try{ if(!a.paused) a.pause(); }catch(e){}
+      try{ a.removeAttribute('src'); a.load(); }catch(e){}
+    });
+  }catch(e){}
+  // iframe 内嵌播放器（如外链播放页）：直接移除，避免其继续在后台播放
+  try{
+    document.querySelectorAll('iframe[data-player-iframe]').forEach(function(f){
+      try{ f.src='about:blank'; f.remove(); }catch(e){}
+    });
+  }catch(e){}
 }
 
 function closeDetail(){
