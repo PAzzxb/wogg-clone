@@ -1915,6 +1915,29 @@ html.nav-mode-top .navrow{
   margin:0 0 6px;text-shadow:none;
 }
 .det-genres:empty{display:none}
+/* ===== 图文正文（51吃瓜等帖子详情：正文 + 配图）===== */
+.det-article-body{
+  margin:10px 18px 26px;
+  padding:14px 16px 6px;
+  border-radius:14px;
+  background:var(--soft);
+  border:1px solid var(--line);
+  text-align:left;
+  word-break:break-word;
+}
+.det-article-body h2,.det-article-body h3,.det-article-body h4{
+  margin:10px 0 8px;font-size:15px;font-weight:700;color:var(--text);
+}
+.det-article-body p{
+  margin:0 0 10px;font-size:14px;line-height:1.75;color:var(--muted);
+}
+.det-article-body ul,.det-article-body ol{margin:0 0 10px;padding-left:20px}
+.det-article-body li{font-size:14px;line-height:1.7;color:var(--muted);margin:0 0 4px}
+.det-article-body strong,.det-article-body b{color:var(--text);font-weight:700}
+.det-article-body img{
+  display:block;width:100%;height:auto;border-radius:10px;
+  margin:2px 0 12px;background:rgba(255,255,255,.05);
+}
 /* ===== 资源条：固定贴视口底；收起仅三角，展开完整面板 ===== */
 .det-collapse-row{
   position:fixed !important;
