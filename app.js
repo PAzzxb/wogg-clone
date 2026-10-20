@@ -7621,14 +7621,32 @@ function _initCg51HeroCarousel(entries){
     const mySeq=_bgRot.seq;
     const A=document.getElementById('detHeroBgA'),B=document.getElementById('detHeroBgB');
     const bg=document.getElementById('detHeroBg');
-    if(!A||!B||!entries||!entries.length) return;
+    const hero=document.getElementById('detHero');
+    if(!A||!B||!entries||!entries.length||!hero) return;
     if(bg){bg.classList.add('show');bg.dataset.bd='1';}
+    // 控制层挂在 hero 内（在 sheet 上层，能收到触摸事件），而非 bg（在 sheet 后面）
+    let _ctl=document.getElementById('cg51HeroCtl');
+    if(_ctl){_ctl.remove();}
+    _ctl=document.createElement('div');
+    _ctl.id='cg51HeroCtl';
+    _ctl.className='cg51-hero-ctl';
+    hero.appendChild(_ctl);
+    // 左右箭头
+    let _prev=document.getElementById('cg51HeroPrev'),_next=document.getElementById('cg51HeroNext');
+    if(_prev)_prev.remove();if(_next)_next.remove();
+    _prev=document.createElement('button');
+    _prev.id='cg51HeroPrev';_prev.className='cg51-hero-arrow prev';_prev.innerHTML='&#8249;';
+    _ctl.appendChild(_prev);
+    _next=document.createElement('button');
+    _next.id='cg51HeroNext';_next.className='cg51-hero-arrow next';_next.innerHTML='&#8250;';
+    _ctl.appendChild(_next);
+    // 圆点/计数
     let _dotWrap=document.getElementById('cg51HeroDots');
     if(_dotWrap){_dotWrap.remove();}
     _dotWrap=document.createElement('div');
     _dotWrap.id='cg51HeroDots';
     _dotWrap.className='cg51-hero-dots';
-    bg.appendChild(_dotWrap);
+    _ctl.appendChild(_dotWrap);
     const n=entries.length;
     _dotWrap.innerHTML = n<=8
       ? entries.map(function(_,i){return '<i class="cg51-hero-dot'+(i===0?' on':'')+'" data-i="'+i+'"></i>';}).join('')
@@ -7651,48 +7669,39 @@ function _initCg51HeroCarousel(entries){
       for(let j=0;j<ds.length;j++) ds[j].classList.toggle('on',j===idx);
       const cnt=_dotWrap.querySelector('.cg51-hero-count'); if(cnt) cnt.textContent=(idx+1)+'/'+n;
     }
-    let _prev=document.getElementById('cg51HeroPrev'),_next=document.getElementById('cg51HeroNext');
-    if(_prev)_prev.remove();if(_next)_next.remove();
-    _prev=document.createElement('button');
-    _prev.id='cg51HeroPrev';_prev.className='cg51-hero-arrow prev';_prev.innerHTML='&#8249;';
     _prev.addEventListener('click',function(e){e.stopPropagation();go(_curIdx-1);});
-    _next=document.createElement('button');
-    _next.id='cg51HeroNext';_next.className='cg51-hero-arrow next';_next.innerHTML='&#8250;';
     _next.addEventListener('click',function(e){e.stopPropagation();go(_curIdx+1);});
-    bg.appendChild(_prev);bg.appendChild(_next);
     _dotWrap.querySelectorAll('.cg51-hero-dot').forEach(function(d){
       d.addEventListener('click',function(e){e.stopPropagation();go(parseInt(this.getAttribute('data-i'),10));});
     });
+    // 触摸滑动切换（在 hero 上，不会阻塞页面滚动）
     let sx=0,sy=0,dragging=false;
-    bg.addEventListener('touchstart',function(e){const t=e.touches[0];sx=t.clientX;sy=t.clientY;dragging=true;},{passive:true});
-    bg.addEventListener('touchend',function(e){
+    _ctl.addEventListener('touchstart',function(e){const t=e.touches[0];sx=t.clientX;sy=t.clientY;dragging=true;moved=false;},{passive:true});
+    _ctl.addEventListener('touchend',function(e){
       if(!dragging)return;dragging=false;
       const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
-      if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)){go(dx<0?_curIdx+1:_curIdx-1);}
+      if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)){moved=true;go(dx<0?_curIdx+1:_curIdx-1);}
     });
-    bg.addEventListener('mousedown',function(e){sx=e.clientX;dragging=true;});
-    bg.addEventListener('mouseup',function(e){
+    _ctl.addEventListener('mousedown',function(e){sx=e.clientX;dragging=true;moved=false;});
+    _ctl.addEventListener('mouseup',function(e){
       if(!dragging)return;dragging=false;
       const dx=e.clientX-sx;
-      if(Math.abs(dx)>50)go(dx<0?_curIdx+1:_curIdx-1);
+      if(Math.abs(dx)>50){moved=true;go(dx<0?_curIdx+1:_curIdx-1);}
     });
+    // 键盘快捷键
     document.addEventListener('keydown',function(e){
-      if(!bg.closest('.sheet.active'))return;
+      if(!hero.closest('.sheet.active'))return;
       if(e.key==='ArrowLeft')go(_curIdx-1);
       else if(e.key==='ArrowRight')go(_curIdx+1);
     });
     go(0);
+    // 不自动轮播：仅用户手动切换（箭头/圆点/滑动/键盘）
     _cg51HeroRot.seq=mySeq;
-    _cg51HeroRot.timer=setInterval(()=>{
-      if(document.hidden)return;
-      go(_curIdx+1);
-      _curIdx=(_curIdx+1)%n;
-    },5000);
     const sheet=$('#sheet');
     if(sheet){
       const _obs=new MutationObserver(function(){
         if(!sheet.classList.contains('active')){
-          clearInterval(_cg51HeroRot.timer);_cg51HeroRot.timer=null;
+          _initCg51HeroCarousel._inited=false;
           _obs.disconnect();
         }
       });
@@ -11642,7 +11651,7 @@ async function _loadDetailContent(v){
     // 海报轮播：根据横竖屏取对应无字版图集，A/B 交替 crossfade
     imagesPromise.then(async function(entries){
       if(_currentDetailItem!==v)return;
-      // 51吃瓜：详情页轮播图集直接用站源提取的 _cg51CarImgs（封面+正文配图），铺满全屏背景并左右切换
+      // 51吃瓜：详情页轮播图集直接用站源提取的 _cg51CarImgs（封面+正文配图），铺满全屏背景
       // CDN 返 binary/octet-stream，需先 fetch+Blob 水合为 blob URL 才能被 Image 加载
       if((v.siteId==='cg51'||v._chigua51Id) && d.info && d.info._cg51CarImgs && d.info._cg51CarImgs.length){
         const rawList=d.info._cg51CarImgs;
@@ -11651,7 +11660,6 @@ async function _loadDetailContent(v){
         }));
         if(_currentDetailItem!==v)return;
         setBackdrops(hydrated);
-        // 51吃瓜：在全屏海报区加左右切换箭头+圆点+滑动切换，底部轮播区隐藏（已整合到海报）
         _initCg51HeroCarousel(hydrated);
         return;
       }
@@ -11764,7 +11772,8 @@ async function _loadDetailContent(v){
 </div>
 <div class="det-genres" id="detGenres"></div>
 ${(_isCg51Det)?'<div class="cg51-video-zone" id="cg51VideoZone"></div>':''}
-${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length)))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+'</section>':''}${(_isCg51Det && d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length&&!(/站务公告/.test((d.info&&d.info._cg51Body)||'')))?'<section class="det-cg51-carousel-sec" id="cg51CarouselSec"><div class="cg51-carousel" id="cg51Carousel"><div class="cg51-car-track">'+d.info._cg51CarImgs.map(function(u){return '<div class="cg51-car-cell"><img data-cg51-src="'+esc(u)+'" alt=""></div>';}).join('')+'</div><button type="button" class="cg51-car-arrow prev" aria-label="上一张">&#8249;</button><button type="button" class="cg51-car-arrow next" aria-label="下一张">&#8250;</button><div class="cg51-car-dots" id="cg51CarDots"></div></div></section>':''}
+${(_isCg51Det && d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length&&!(/站务公告/.test((d.info&&d.info._cg51Body)||'')))?'<section class="det-cg51-carousel-sec" id="cg51CarouselSec"><div class="cg51-carousel" id="cg51Carousel"><div class="cg51-car-track">'+d.info._cg51CarImgs.map(function(u){return '<div class="cg51-car-cell"><img data-cg51-src="'+esc(u)+'" alt=""></div>';}).join('')+'</div><button type="button" class="cg51-car-arrow prev" aria-label="上一张">&#8249;</button><button type="button" class="cg51-car-arrow next" aria-label="下一张">&#8250;</button><div class="cg51-car-dots" id="cg51CarDots"></div></div></section>':''}
+${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length)))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+'</section>':''}
 <div class="det-collapse-row">
 <section class="det-collapse det-res">
 <div class="det-collapse-head">
