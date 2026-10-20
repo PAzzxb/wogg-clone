@@ -2149,14 +2149,20 @@ function renderChips(){
       e.stopPropagation();
       const hasSub=b.classList.contains('has-sub');
       const g=b.dataset.grp;
-      if(hasSub && s.catGroups && s.catGroups[g] && s.catGroups[g].length){
-        // 有二级分类：切换/展开下拉面板（不直接切换分类，避免空列表）
-        if(!b.classList.contains('active')) activateCategory(b.dataset.id);
-        toggleDropPanel();
-      }else{
-        activateCategory(b.dataset.id);
-        closeDropPanel();
-      }
+        if(hasSub && s.catGroups && s.catGroups[g] && s.catGroups[g].length){
+          // 有二级分类：切到新分类自动弹出二级下拉；点当前已选分类则一键收起/展开
+          if(b.classList.contains('active')){
+            const _p=$('#catDropPanel');
+            if(_p && !_p.hidden && _p.classList.contains('show')) closeDropPanel();
+            else openDropPanel();
+          }else{
+            activateCategory(b.dataset.id);   // 切换分类（同时刷新下拉内容）
+            openDropPanel();                 // 自动弹出二级下拉，免去每次手动下拉
+          }
+        }else{
+          activateCategory(b.dataset.id);
+          closeDropPanel();
+        }
     };
   });
   // 父分组 chip：若当前选中的分类属于它的二级 → 加 drop-open 高亮三角
@@ -2225,14 +2231,25 @@ function positionDropPanel(){
   document.documentElement.style.setProperty('--nav-h', navH+'px');
   panel.style.top=(r.bottom)+'px';
 }
+function _catDropOutside(e){
+  const panel=$('#catDropPanel');
+  if(!panel) return;
+  if(panel.contains(e.target)) return;
+  const nav=document.getElementById('navMain');
+  if(nav && nav.contains(e.target)) return;
+  closeDropPanel();
+}
 function openDropPanel(){
   const panel=$('#catDropPanel'); if(!panel) return;
   positionDropPanel();
   panel.hidden=false;
   requestAnimationFrame(()=>panel.classList.add('show'));
+  document.removeEventListener('click', _catDropOutside, true);
+  setTimeout(()=>document.addEventListener('click', _catDropOutside, true), 0);
 }
 function closeDropPanel(){
   const panel=$('#catDropPanel'); if(!panel) return;
+  document.removeEventListener('click', _catDropOutside, true);
   panel.classList.remove('show');
   setTimeout(()=>{ panel.hidden=true; }, 180);
 }
