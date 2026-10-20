@@ -1786,19 +1786,43 @@ html.nav-mode-top .navrow{
 /* 51吃瓜：海报容器直接撑满视口（手机竖屏也全屏），不受 2/3 aspect-ratio 限制 */
 #sheet.cg51-det .det-hero{
   min-height:100vh !important;
+  height:100vh !important;
   aspect-ratio:auto !important;max-height:none !important;
   background:transparent !important;
   overflow:visible !important;
 }
-/* 51吃瓜：sheet 本身也全屏，不限制内容 */
+/* 51吃瓜：sheet 背景透明，让全屏海报透出来 */
 #sheet.cg51-det{
+  background:transparent !important;
   display:block !important;
   overflow-y:auto !important;
+  height:100vh !important;
+  max-height:100vh !important;
 }
+/* 51吃瓜：海报容器占满视口，固定在顶部不随滚动移开 */
+#sheet.cg51-det .det-hero{
+  position:sticky !important;
+  top:0 !important;
+  min-height:100vh !important;
+  height:100vh !important;
+  aspect-ratio:auto !important;max-height:none !important;
+  background:transparent !important;
+  overflow:visible !important;
+  z-index:1;
+}
+/* 51吃瓜：panel 内容在海报下方滚动 */
+#sheet.cg51-det .panel{
+  margin-top:0 !important;
+  padding:0 18px calc(var(--safe-bottom) + 56px) !important;
+}
+/* 51吃瓜：吸顶导航隐藏，全屏海报已覆盖顶部 */
+#sheet.cg51-det .det-topbar{display:none !important}
 /* 51吃瓜：覆盖 landscape-mode 的 flex 布局，让海报直接撑满 */
 #sheet.cg51-det.landscape-mode{
   display:block !important;
   flex-direction:initial !important;
+  height:100vh !important;
+  max-height:100vh !important;
 }
 #sheet.cg51-det.landscape-mode .det-hero{
   flex:none !important;
