@@ -11527,7 +11527,7 @@ const PAN_TYPE_LABEL={quark:'夸克',aliyun:'阿里',baidu:'百度',uc:'UC',tian
 const PAN_CHECK_TYPES=new Set(['aliyun','quark','uc','baidu','tianyi','xunlei','115','mobile']);
 function panTypeLabel(t){return PAN_TYPE_LABEL[t]||t||'网盘'}
 function openPanConfig(){
-  return new Promise(async resolve=>{
+  return new Promise(resolve=>{
     const mask=$('#panCfgMask'),input=$('#panCfgInput'),okBtn=$('#panCfgOk'),cancelBtn=$('#panCfgCancel'),resetBtn=$('#panCfgReset');
     const titleEl=mask&&mask.querySelector('.custom-modal-title');
     const sourceCfg=$('#panSourceCfg'),tabs=$('#panSourceTabs'),listEl=$('#panSourceList');
@@ -11650,7 +11650,8 @@ function openPanConfig(){
           if(!channelList.length)channelList=normalizeNames(cache.channels);
           if(!pluginList.length)pluginList=normalizeNames(cache.plugins);
         }catch(_){}
-        setDefaultsFromHealth();
+        // 健康检查失败且缓存也为空时，不执行"默认全选"，避免把用户已保存的频道/插件配置覆盖成空
+        if(channelList.length||pluginList.length) setDefaultsFromHealth();
         renderPane();
         if(!channelList.length&&!pluginList.length&&listEl){
           listEl.innerHTML='<div class="pan-source-empty">无法读取 PanSou 配置，请检查接口地址是否可用。</div>';
@@ -11674,12 +11675,8 @@ function openPanConfig(){
     };
     if(refreshBtn)refreshBtn.onclick=()=>loadHealth();
 
-    setDefaultsFromHealth();
-    updateCounts();
-    renderPane();
-    mask.classList.add('show');
-    await loadHealth();
-
+    // 先绑定全部交互（确定/取消/遮罩/Esc/恢复默认），再展示弹窗：
+    // loadHealth 健康检查最长十几秒，若等它完成再绑定，这期间点确定/取消/Esc 无响应
     let done=false;
     const finish=(ok)=>{
       if(done)return;done=true;
@@ -11718,6 +11715,13 @@ function openPanConfig(){
       if(e.key==='Enter' && document.activeElement===input){e.preventDefault();finish(true)}
       else if(e.key==='Escape'){e.preventDefault();finish(false)}
     };
+
+    setDefaultsFromHealth();
+    updateCounts();
+    renderPane();
+    mask.classList.add('show');
+    // 健康检查放后台跑（内部自带 try/catch 与缓存兜底），不阻塞弹窗交互
+    loadHealth().catch(()=>{});
   });
 }
 // 觅搜设置独立于盘搜：只管理觅搜自己的网盘分类，不显示盘搜接口/TG频道/搜索插件。
