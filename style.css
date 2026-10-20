@@ -2163,12 +2163,15 @@ html.nav-mode-top .navrow{
 #sheet.cg51-det .det-bigtitle,
 #sheet.cg51-det .det-genres,
 #sheet.cg51-det .det-article-body,
-#sheet.cg51-det .det-cg51-content{
+#sheet.cg51-det .det-cg51-content,
+#sheet.cg51-det .cg51-video-zone{
   background:transparent!important;
   border:none!important;
   border-radius:0!important;
   box-shadow:none!important;
 }
+/* 视频区容器透明后收紧留白，避免播放按钮周围出现空的深色框 */
+#sheet.cg51-det .cg51-video-zone{padding:6px 0 0}
 #sheet.cg51-det .det-title-wrap{margin:0}
 #sheet.cg51-det .det-intro-collapse{border:none;background:transparent;margin:0}
 #sheet.cg51-det .det-intro-head{background:transparent;padding:0}
@@ -2504,8 +2507,10 @@ html.nav-mode-top .navrow{
   border:none !important;
   border-radius:0 !important;
   box-shadow:none !important;
-  width:44px;height:44px;
-  color:rgba(255,255,255,.9);
+  /* 基础 .det-play-btn 带 !important 的 62px/#1a1a1a 会压过这里的普通声明，
+     必须同样 !important 才能保住 cg51 的 44px 尺寸与白色三角 */
+  width:44px !important;height:44px !important;
+  color:rgba(255,255,255,.92) !important;
   filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));
 }
 #sheet.cg51-det .det-play-btn svg,
