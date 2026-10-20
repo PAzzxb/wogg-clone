@@ -10379,6 +10379,8 @@ const CG51_NOTICE_RE=/(招募|投稿|稿费|征稿|致歉|道歉|致歉信|公�
 function chigua51IsNotice(title){
   return CG51_NOTICE_RE.test(String(title||''));
 }
+/* 站点导航/导流段关键词：每帖重复的地址列表、APP 下载、分享提示等噪音（命中即整段剔除） */
+const CG51_NAV_RE=/(最新地址|最新域名|新地址|海外地址|翻墙访问|备用地址|备用域名|下载\s*app|app下载|福利导航|成人福利|回家的路|重要提示|温馨提示|防迷路|收藏本站|关注官方|官方客服|商务合作|广告合作|分享5|吃瓜请告知|复制网址|浏览器打开|邮箱联系|裸聊)/i;
 /* 51吃瓜图片水合：封面/正文图 CDN 返回 binary/octet-stream，Chromium <img> 与 background 均拒显。
  * 方案：fetch → arrayBuffer → 魔数判真实 MIME → new Blob → objectURL → img.src。
  * 列表封面与详情底部图区通用；objectURL 按 URL 缓存去重；视口内立即水合，其余 IO 懒加载，并发 4。 */
@@ -10393,12 +10395,18 @@ function chigua51GuessMime(buf){
   }catch(e){}
   return 'image/jpeg';
 }
-/* 单 URL 水合为 blob: 地址（按 URL 缓存去重）；已是 blob:/data: 直接返回 */
+/* 单 URL 水合为 blob: 地址（按 URL 缓存去重）；已是 blob:/data: 直接返回。
+ * 关键：该站图片 CDN 返 binary/octet-stream + AES-CBC 密文（Chromium <img>/background 均拒显），
+ * 必须先经 hgDecryptPoster（明文直 blob / 密文 AES 解后 blob，带缓存）；下方 fetch+魔数仅作双保险。 */
 async function chigua51HydrateUrl(raw){
   if(!raw) return '';
   if(/^blob:|^data:/i.test(raw)) return raw;
   let bu=_cg51ObjCache[raw];
   if(bu) return bu;
+  try{
+    const dec=await hgDecryptPoster(raw);
+    if(dec && /^blob:/i.test(dec)){ _cg51ObjCache[raw]=dec; return dec; }
+  }catch(e){}
   const r=await fetch(raw,{signal:AbortSignal.timeout(15000)});
   if(!r.ok) throw new Error('HTTP '+r.status);
   const buf=await r.arrayBuffer();
@@ -10587,9 +10595,8 @@ function chigua51SafeUrl(u, base){
   if(!/^https?:\/\/[^\s"'<>\\]+$/i.test(url)) return '';
   return url.replace(/"/g,'%22');
 }
-/* 正文清洗：白名单只保留 h2/h3/h4/p/ul/ol（含 li/strong/em 等行内），
- * 懒加载真图（data-xkrkllgl）转直链；广告（txt-apps/btn-app/tjtagmanager/banner/主题 UI 图/全部外链/dplayer/关键词段）剔除 */
-function chigua51CleanBody(html, base){
+/* 切出 post-content 正文块（图提取与正文清洗共用） */
+function chigua51PostContentSlice(html){
   const raw=String(html||'');
   const st=raw.indexOf('<div class="post-content"');
   if(st<0) return '';
@@ -10602,12 +10609,24 @@ function chigua51CleanBody(html, base){
     if(o>=0 && o<c){ depth++; pos=o+4; }
     else { depth--; pos=c+6; }
   }
-  let body=raw.slice(gt+1, Math.max(gt+1,pos-6));
+  return raw.slice(gt+1, Math.max(gt+1,pos-6));
+}
+/* 正文清洗：白名单只保留 h2/h3/h4/p/ul/ol（含 li/strong/em 等行内），
+ * 懒加载真图（data-xkrkllgl）转直链；广告（txt-apps/btn-app/tjtagmanager/banner/主题 UI 图/全部外链/dplayer/关键词段）剔除 */
+function chigua51CleanBody(html, base){
+  let body=chigua51PostContentSlice(html);
+  if(!body) return '';
   body=body.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/<style[\s\S]*?<\/style>/gi,'');
   body=chigua51RemoveDivBlocks(body, 'dplayer');   // 播放器（含加载层/配置）
   body=chigua51RemoveDivBlocks(body, 'txt-apps');  // 顶部广告按钮组
   body=chigua51RemoveDivBlocks(body, 'btn-download'); // APP 下载钮
   body=chigua51RemoveTagBlocks(body, 'blockquote'); // 站方地址通告（每帖重复的导航噪音）
+  body=body.replace(/<section\b[^>]*hot-news-section[^>]*>[\s\S]*?<\/section\s*>/gi,''); // 🔥重磅热瓜🔥 热闻区（每帖重复的标题党导流）
+  body=chigua51RemoveDivBlocks(body, 'links-list');       // 最新地址/海外地址/备用地址
+  body=chigua51RemoveDivBlocks(body, 'app-download');     // 下载app(免费吃瓜)
+  body=chigua51RemoveDivBlocks(body, 'navigation-link');  // 福利导航(成人福利)
+  body=chigua51RemoveDivBlocks(body, 'download-section'); // 回家的路PDF
+  body=chigua51RemoveDivBlocks(body, 'a2a_kit');          // 分享按钮组
   const re=/<(p|h2|h3|h4|ul|ol)\b[^>]*>([\s\S]*?)<\/\1\s*>/gi;
   let m, outHtml='';
   while((m=re.exec(body))){
@@ -10624,16 +10643,18 @@ function chigua51CleanBody(html, base){
     const hasImg=/<img\b/i.test(inner);
     if(!text && !hasImg) continue;
     if(/^关键词[:：]/.test(text)) continue;                                  // 站点 SEO 关键词段
+    if(CG51_NAV_RE.test(text)) continue;                                       // 站点导航/导流段（地址/下载/分享提示）
     outHtml+='<'+tag+'>'+inner+'</'+tag+'>';
   }
   return outHtml;
 }
-/* 提取详情页正文全部真图 URL（data-xkrkllgl 为本站真图唯一特征），供底部图区网格展示 */
+/* 提取正文块全部真图 URL（data-xkrkllgl 为本站真图唯一特征；只取 post-content 内，排除帖外杂图），供底部图区网格展示 */
 function chigua51ExtractBodyImgs(html, base){
   const out=[]; const seen=new Set();
   const re=/<img\b[^>]*data-xkrkllgl="([^"]+)"[^>]*>/gi;
   let m;
-  while((m=re.exec(String(html||'')))){
+  const scope=chigua51PostContentSlice(html)||String(html||'');
+  while((m=re.exec(scope))){
     const url=chigua51SafeUrl(m[1], base);
     if(url && !seen.has(url)){ seen.add(url); out.push(url); }
   }
@@ -11497,9 +11518,8 @@ async function _loadDetailContent(v){
   <div class="det-bigtitle" id="detBigTitle" title="${esc(title)}">${esc(title)}</div>
 </div>
 <div class="det-genres" id="detGenres"></div>
-${(d.info&&d.info._cg51Body)?'<section class="det-article-body">'+d.info._cg51Body+'</section>':''}
 ${(_isCg51Det)?'<div class="cg51-video-zone" id="cg51VideoZone"></div>':''}
-${(d.info&&d.info._cg51Imgs&&d.info._cg51Imgs.length)?'<section class="det-cg51-imgs" id="cg51ImgsSec"><div class="det-cg51-imgs-head">帖子图片<em>'+d.info._cg51Imgs.length+' 张</em></div><div class="cg51-img-grid">'+d.info._cg51Imgs.map(function(u){return '<div class="cg51-img-cell"><img data-cg51-src="'+esc(u)+'" loading="lazy" alt=""></div>';}).join('')+'</div></section>':''}
+${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51Imgs&&d.info._cg51Imgs.length)))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+((d.info&&d.info._cg51Imgs&&d.info._cg51Imgs.length)?'<div class="det-cg51-imgs" id="cg51ImgsSec"><div class="det-cg51-imgs-head">帖子图片<em>'+d.info._cg51Imgs.length+' 张</em></div><div class="cg51-img-grid">'+d.info._cg51Imgs.map(function(u){return '<div class="cg51-img-cell"><img data-cg51-src="'+esc(u)+'" loading="lazy" alt=""></div>';}).join('')+'</div></div>':'')+'</section>':''}
 <div class="det-collapse-row">
 <section class="det-collapse det-res">
 <div class="det-collapse-head">
