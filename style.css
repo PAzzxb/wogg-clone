@@ -1956,7 +1956,7 @@ html.nav-mode-top .navrow{
 .cg51-ep-btn.active{background:rgba(var(--accent-rgb),.24);border-color:rgba(var(--accent-rgb),.55);color:#fff}
 /* ===== 51吃瓜详情：底部内容卡（帖子文字描述 + 封面代表图，整体位于播放入口之下）===== */
 .det-cg51-content{
-  margin:2px 18px 18px;padding:14px 16px;
+  margin:2px 12px 14px;padding:14px 12px;overflow:hidden;
   border-radius:14px;background:var(--soft);border:1px solid var(--line);
 }
 .det-cg51-content .det-article-body{
@@ -1964,12 +1964,14 @@ html.nav-mode-top .navrow{
 }
 .det-cg51-content .det-article-body:last-child{padding-bottom:0}
 /* ===== 51吃瓜详情：内容卡图片轮播（封面+帖子配图，左右切换）===== */
+/* 轮播贴内容卡边缘（负边距抵掉 padding），图尽量大 */
+.det-cg51-content .cg51-carousel{margin:12px -12px -14px;border-radius:0}
 .cg51-carousel{position:relative;margin:14px 0 0;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.05)}
 .cg51-carousel:first-child{margin-top:0}
 .cg51-car-track{display:flex;transition:transform .3s ease;touch-action:pan-y;will-change:transform}
 .cg51-car-cell{flex:0 0 100%;min-width:0;display:flex;align-items:center;justify-content:center}
 .cg51-car-cell img{
-  display:block;width:100%;height:auto;max-height:72vh;object-fit:contain;
+  display:block;width:100%;height:auto;max-height:80vh;object-fit:contain;
   background:rgba(255,255,255,.05);opacity:0;transition:opacity .25s;cursor:zoom-in;
   -webkit-user-drag:none;user-select:none;
 }
