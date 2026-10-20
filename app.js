@@ -10462,6 +10462,70 @@ function chigua51HydrateAll(root, force){
     })();
   }catch(e){}
 }
+/* 详情内容卡图片轮播：左右切换（箭头/圆点/触摸与鼠标拖拽），按需水合当前张+相邻张，点图看大图 */
+function chigua51InitCarousel(car){
+  try{
+    const track=car.querySelector('.cg51-car-track');
+    const cells=[].slice.call(car.querySelectorAll('.cg51-car-cell'));
+    const dotsBox=car.querySelector('#cg51CarDots');
+    const n=cells.length;
+    if(!track||!n) return;
+    let cur=0, moved=false;
+    // 指示：≤8 张用圆点，更多用「当前/总数」
+    if(dotsBox){
+      dotsBox.innerHTML = n<=8
+        ? cells.map(function(_,i){return '<i class="cg51-car-dot'+(i===0?' on':'')+'" data-i="'+i+'"></i>';}).join('')
+        : '<span class="cg51-car-count">1/'+n+'</span>';
+    }
+    function hydrate(k){
+      const c=cells[((k%n)+n)%n]; const im=c&&c.querySelector('img');
+      if(im&&im.dataset.cg51Done!=='1'&&typeof chigua51HydrateImg==='function'){ try{ chigua51HydrateImg(im); }catch(e){} }
+    }
+    function go(i){
+      cur=((i%n)+n)%n;
+      track.style.transform='translateX('+(-cur*100)+'%)';
+      for(let j=0;j<cells.length;j++) cells[j].classList.toggle('active',j===cur);
+      if(dotsBox){
+        const ds=dotsBox.querySelectorAll('.cg51-car-dot');
+        for(let j=0;j<ds.length;j++) ds[j].classList.toggle('on',j===cur);
+        const cnt=dotsBox.querySelector('.cg51-car-count'); if(cnt) cnt.textContent=(cur+1)+'/'+n;
+      }
+      hydrate(cur-1); hydrate(cur); hydrate(cur+1);   // 当前张 + 相邻张预载
+    }
+    const prev=car.querySelector('.cg51-car-arrow.prev'), next=car.querySelector('.cg51-car-arrow.next');
+    if(prev) prev.onclick=function(e){ e.stopPropagation(); go(cur-1); };
+    if(next) next.onclick=function(e){ e.stopPropagation(); go(cur+1); };
+    if(dotsBox){
+      const ds=dotsBox.querySelectorAll('.cg51-car-dot');
+      for(let j=0;j<ds.length;j++){
+        ds[j].onclick=function(e){ e.stopPropagation(); go(parseInt(this.getAttribute('data-i'),10)); };
+      }
+    }
+    // 滑动切换（触摸 + 鼠标拖拽；水平位移优先，垂直滚动留给页面）
+    let sx=0, sy=0, dragging=false;
+    car.addEventListener('touchstart',function(e){ const t=e.touches[0]; sx=t.clientX; sy=t.clientY; dragging=true; moved=false; },{passive:true});
+    car.addEventListener('touchend',function(e){
+      if(!dragging) return; dragging=false;
+      const t=e.changedTouches[0], dx=t.clientX-sx, dy=t.clientY-sy;
+      if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)){ moved=true; go(dx<0?cur+1:cur-1); }
+    });
+    car.addEventListener('mousedown',function(e){ sx=e.clientX; dragging=true; moved=false; });
+    car.addEventListener('mouseup',function(e){
+      if(!dragging) return; dragging=false;
+      const dx=e.clientX-sx;
+      if(Math.abs(dx)>10) moved=true;
+      if(Math.abs(dx)>50) go(dx<0?cur+1:cur-1);
+    });
+    // 点当前图看大图（拖拽切换过则不弹灯箱）
+    car.addEventListener('click',function(e){
+      if(moved){ moved=false; return; }
+      const im=e.target&&e.target.closest&&e.target.closest('img'); if(!im) return;
+      const src=im.src||im.getAttribute('data-cg51-src'); if(src) chigua51Lightbox(src);
+    });
+    // 初始：水合首张 + 相邻两张（其余切换到跟前再加载）
+    hydrate(0); hydrate(1); hydrate(n-1);
+  }catch(e){}
+}
 /* 底部图区点击看大图（轻量 lightbox） */
 function chigua51Lightbox(url){
   try{
@@ -10688,9 +10752,13 @@ async function chigua51Detail(v){
     }
     const og=html.match(/property="og:image"\s+content="([^"]+)"/i);
     if(og&&!info.pic) info.pic=chigua51Abs(base, og[1]);
-    // 帖子配图提取已停用：详情内容卡只放「文字描述 + 封面代表图」（og:image 即封面），
-    // 不再渲染正文插图网格；chigua51ExtractBodyImgs 保留备用
-    // info._cg51Imgs=chigua51ExtractBodyImgs(html, base);
+    // 轮播图集：封面（og:image）打头 + 正文配图去重追加（详情内容卡左右滑动看）
+    info._cg51Imgs=chigua51ExtractBodyImgs(html, base);
+    const _carImgs=[];
+    const _coverPic=info.pic||(v&&v.pic)||'';
+    if(_coverPic) _carImgs.push(_coverPic);
+    (info._cg51Imgs||[]).forEach(function(u){ if(_carImgs.indexOf(u)<0) _carImgs.push(u); });
+    info._cg51CarImgs=_carImgs;
     // 视频 → 分集（一段一集；单段命名「在线」）
     const vids=chigua51ExtractVideos(html);
     const pageUrl=chigua51Abs(base, path);
@@ -11525,7 +11593,7 @@ async function _loadDetailContent(v){
 </div>
 <div class="det-genres" id="detGenres"></div>
 ${(_isCg51Det)?'<div class="cg51-video-zone" id="cg51VideoZone"></div>':''}
-${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.pic||(d.info&&d.info.pic))))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+((d.pic||(d.info&&d.info.pic))&&!(d.info&&/站务公告/.test(d.info._cg51Body||''))?'<div class="det-cg51-cover"><img data-cg51-src="'+esc(d.pic||(d.info&&d.info.pic)||'')+'" alt=""></div>':'')+'</section>':''}
+${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length)))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+((d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length&&!(/站务公告/.test(d.info._cg51Body||'')))?'<div class="cg51-carousel" id="cg51Carousel"><div class="cg51-car-track">'+d.info._cg51CarImgs.map(function(u){return '<div class="cg51-car-cell"><img data-cg51-src="'+esc(u)+'" alt=""></div>';}).join('')+'</div><button type="button" class="cg51-car-arrow prev" aria-label="上一张">&#8249;</button><button type="button" class="cg51-car-arrow next" aria-label="下一张">&#8250;</button><div class="cg51-car-dots" id="cg51CarDots"></div></div>':'')+'</section>':''}
 <div class="det-collapse-row">
 <section class="det-collapse det-res">
 <div class="det-collapse-head">
@@ -11745,15 +11813,11 @@ function _normPanType(p){
     }
     refreshPlayBtn(false);
     ensurePlayReady(null);
-    // 51吃瓜：封面代表图水合（CDN 返 binary/octet-stream，需 fetch+Blob 重建 MIME）+ 点图看大图
+    // 51吃瓜：图片轮播初始化 + 按需水合（CDN 返 binary/octet-stream，需 fetch+Blob 重建 MIME）+ 点图看大图
     try{
       if(v&&(v.siteId==='cg51'||v._chigua51Id)){
-        chigua51HydrateAll(panel, true);   // 封面图：立即水合（用户点开就是看图的）
-        const coverBox=panel.querySelector('.det-cg51-cover');
-        if(coverBox) coverBox.addEventListener('click',function(e){
-          const im=e.target&&e.target.closest&&e.target.closest('img'); if(!im) return;
-          const src=im.src||im.getAttribute('data-cg51-src'); if(src) chigua51Lightbox(src);
-        });
+        const car=panel.querySelector('#cg51Carousel');
+        if(car) chigua51InitCarousel(car);
       }
     }catch(eHg51){}
 
