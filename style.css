@@ -1799,8 +1799,10 @@ html.nav-mode-top .navrow{
 /* 51吃瓜：去掉 hero 的 100vh 强制撑满（旧规则会把 hero 钉成整屏，
    把标题/简介/播放钮/计数器挤出首屏）；hero 尺寸交回 landscape-mode 的
    flex:1 1 auto，海报仍由全屏 detHeroBg 层呈现，切换轮播不受影响 */
-/* 非 cg51 站点：播放按钮在全屏海报上方可见（det-hero-bg z-index:38 遮住了 z-index:2 的 cta） */
-#sheet:not(.cg51-det) .det-hero-cta{
+/* 播放按钮在全屏海报上方可见（det-hero-bg z-index:38 会盖住 cta）；
+   cg51 播放按钮也移到了 hero 底部，一并提层 */
+#sheet:not(.cg51-det) .det-hero-cta,
+#sheet.cg51-det .det-hero-cta{
   z-index:39 !important;
   display:flex !important;
 }
@@ -2035,7 +2037,6 @@ html.nav-mode-top .navrow{
 }
 .cg51-video-zone:empty{display:none}
 .cg51-video-zone .det-play-btn{width:54px;height:54px;flex:none}
-.cg51-video-zone .cg51-play-btn:active{transform:scale(.94);background:rgba(255,255,255,.98)}
 .cg51-ep-list{display:flex;flex-wrap:wrap;gap:8px;flex:1;min-width:0}
 .cg51-ep-btn{
   border:1px solid var(--line);background:rgba(255,255,255,.06);color:var(--text);
@@ -2043,6 +2044,22 @@ html.nav-mode-top .navrow{
   white-space:nowrap;
 }
 .cg51-ep-btn.active{background:rgba(var(--accent-rgb),.24);border-color:rgba(var(--accent-rgb),.55);color:#fff}
+/* 51吃瓜：海报浏览模式（浏览模式下隐藏标题/简介/播放按钮/集数，计数器与轮播箭头保持可见）
+   用户切换海报时由 JS 加 .cg51-poster-browse；停手 3.5s 或点海报空白处自动恢复 */
+#sheet.cg51-det .det-title-wrap,
+#sheet.cg51-det .det-intro-collapse,
+#sheet.cg51-det .cg51-video-zone,
+#sheet.cg51-det .det-hero-cta{
+  transition:opacity .3s ease, transform .3s ease;
+}
+#sheet.cg51-det.cg51-poster-browse .det-title-wrap,
+#sheet.cg51-det.cg51-poster-browse .det-intro-collapse,
+#sheet.cg51-det.cg51-poster-browse .cg51-video-zone,
+#sheet.cg51-det.cg51-poster-browse .det-hero-cta{
+  opacity:0;
+  transform:translateY(14px);
+  pointer-events:none;
+}
 /* ===== 51吃瓜详情：底部内容卡（帖子文字描述 + 封面代表图，整体位于播放入口之下）===== */
 .det-cg51-content{
   margin:2px 12px 14px;padding:14px 12px;overflow:hidden;
@@ -2471,23 +2488,8 @@ html.nav-mode-top .navrow{
 
 /* action buttons — 居中 + 与首页主按钮统一质感 */
 .det-actions{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 18px;align-items:center;justify-content:center}
-/* 51吃瓜：播放按钮去掉白色圆框，只保留透明背景 + 图标 */
-#sheet.cg51-det .det-play-btn,
-#sheet.cg51-det .cg51-play-btn{
-  background:transparent !important;
-  border:none !important;
-  border-radius:0 !important;
-  box-shadow:none !important;
-  /* 基础 .det-play-btn 带 !important 的 62px/#1a1a1a 会压过这里的普通声明，
-     必须同样 !important 才能保住 cg51 的 44px 尺寸与白色三角 */
-  width:44px !important;height:44px !important;
-  color:rgba(255,255,255,.92) !important;
-  filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));
-}
-#sheet.cg51-det .det-play-btn svg,
-#sheet.cg51-det .cg51-play-btn svg{width:28px;height:28px;margin-left:0;fill:currentColor}
-#sheet.cg51-det .det-play-btn:active,
-#sheet.cg51-det .cg51-play-btn:active{transform:scale(.9);filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
+/* 51吃瓜：播放按钮改到 hero 底部主按钮位，与其他站点同款白圆播放钮；
+   去掉旧的「透明背景 + 44px」覆写，直接走基础 .det-play-btn（白底圆形+深色三角） */
 
 
 /* 瓜子首页多板块（对齐官网） */

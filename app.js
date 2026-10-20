@@ -7643,7 +7643,19 @@ function _initCg51HeroCarousel(entries){
     _ctl.appendChild(_next);
     const n=entries.length;
     let _curIdx=0;
-    function go(i){
+    // 海报浏览模式：用户主动切换海报时，自动隐藏标题/简介/播放按钮（纯净看海报），
+    // 停手 3.5s 后或点海报空白处自动恢复显示
+    let _browseTimer=null;
+    function _exitPosterBrowse(){
+      clearTimeout(_browseTimer);
+      const sh=$('#sheet'); if(sh) sh.classList.remove('cg51-poster-browse');
+    }
+    function _enterPosterBrowse(){
+      const sh=$('#sheet'); if(sh) sh.classList.add('cg51-poster-browse');
+      clearTimeout(_browseTimer);
+      _browseTimer=setTimeout(_exitPosterBrowse,3500);
+    }
+    function go(i,fromUser){
       const cur=_bgRot.active==='A'?A:B, nxt=_bgRot.active==='A'?B:A;
       const nextActive=_bgRot.active==='A'?'B':'A';
       const idx=((i%n)+n)%n;
@@ -7659,28 +7671,36 @@ function _initCg51HeroCarousel(entries){
       // 更新底部计数
       const cnt=document.getElementById('cg51HeroCount');
       if(cnt) cnt.textContent=(idx+1)+'/'+n;
+      // 仅用户主动切换才进入浏览模式；初始 go(0) 保持内容可见
+      if(fromUser) _enterPosterBrowse();
     }
-    _prev.addEventListener('click',function(e){e.stopPropagation();go(_curIdx-1);});
-    _next.addEventListener('click',function(e){e.stopPropagation();go(_curIdx+1);});
+    _prev.addEventListener('click',function(e){e.stopPropagation();go(_curIdx-1,true);});
+    _next.addEventListener('click',function(e){e.stopPropagation();go(_curIdx+1,true);});
+    // 点海报空白处（非箭头、非拖动）：立即恢复标题/简介/播放按钮
+    _ctl.addEventListener('click',function(e){
+      if(moved){ moved=false; return; }
+      if(e.target.closest('.cg51-hero-arrow')) return;
+      _exitPosterBrowse();
+    });
     // 触摸滑动切换（在 hero 上，不会阻塞页面滚动）
-    let sx=0,sy=0,dragging=false;
+    let sx=0,sy=0,dragging=false,moved=false;
     _ctl.addEventListener('touchstart',function(e){const t=e.touches[0];sx=t.clientX;sy=t.clientY;dragging=true;moved=false;},{passive:true});
     _ctl.addEventListener('touchend',function(e){
       if(!dragging)return;dragging=false;
       const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;
-      if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)){moved=true;go(dx<0?_curIdx+1:_curIdx-1);}
+      if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)){moved=true;go(dx<0?_curIdx+1:_curIdx-1,true);}
     });
     _ctl.addEventListener('mousedown',function(e){sx=e.clientX;dragging=true;moved=false;});
     _ctl.addEventListener('mouseup',function(e){
       if(!dragging)return;dragging=false;
       const dx=e.clientX-sx;
-      if(Math.abs(dx)>50){moved=true;go(dx<0?_curIdx+1:_curIdx-1);}
+      if(Math.abs(dx)>50){moved=true;go(dx<0?_curIdx+1:_curIdx-1,true);}
     });
     // 键盘快捷键
     document.addEventListener('keydown',function(e){
       if(!hero.closest('.sheet.active'))return;
-      if(e.key==='ArrowLeft')go(_curIdx-1);
-      else if(e.key==='ArrowRight')go(_curIdx+1);
+      if(e.key==='ArrowLeft')go(_curIdx-1,true);
+      else if(e.key==='ArrowRight')go(_curIdx+1,true);
     });
     go(0);
     // 初始化底部计数
@@ -7689,10 +7709,12 @@ function _initCg51HeroCarousel(entries){
     _cg51HeroRot.seq=mySeq;
     const sheet=$('#sheet');
     if(sheet){
+      sheet.classList.remove('cg51-poster-browse');   // 重新打开详情：内容默认可见
       const _obs=new MutationObserver(function(){
         if(!sheet.classList.contains('active')){
           _initCg51HeroCarousel._inited=false;
           _obs.disconnect();
+          _exitPosterBrowse();   // 离开详情：清掉浏览态与定时器
         }
       });
       _obs.observe(sheet,{attributes:true,attributeFilter:['class']});
@@ -11906,17 +11928,18 @@ ${_netdiskHtml}
       }
     }catch(eRes){}
     function refreshPlayBtn(markValid){
-      // 51吃瓜：播放入口在底部视频区（#cg51VideoZone），hero 只留主封面
+      // 51吃瓜：播放入口也改到 hero 底部主按钮位（与其他站点同款白圆播放钮）；
+      // 集数切换仍留在底部视频区 #cg51VideoZone
       const _isCg51=!!(v&&(v.siteId==='cg51'||v._chigua51Id));
-      const hc=(_isCg51&&document.getElementById('cg51VideoZone'))||document.querySelector('.det-hero-cta'); if(!hc) return;
+      const hc=document.querySelector('.det-hero-cta'); if(!hc) return;
       const p=_playTarget||(d.pans&&d.pans[0])||null;
       if(!p||!p.url){ hc.innerHTML=''; return; }
-      const btnId=_isCg51?'cg51PlayBtn':'detPlayBtn';
+      const btnId='detPlayBtn';
       let b=document.getElementById(btnId);
       const epHint=(_playTarget&&(_playTarget.name||_playTarget.title))?String(_playTarget.name||_playTarget.title).trim():'';
       const aria=epHint?('续播 '+epHint):'立即播放';
       if(!b){
-        hc.insertAdjacentHTML('afterbegin','<button class="det-play-btn'+(_isCg51?' cg51-play-btn':'')+'" id="'+btnId+'" aria-label="'+aria.replace(/"/g,'')+'"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>');
+        hc.insertAdjacentHTML('afterbegin','<button class="det-play-btn" id="'+btnId+'" aria-label="'+aria.replace(/"/g,'')+'"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>');
         b=document.getElementById(btnId);
       }else{
         b.setAttribute('aria-label', aria);
@@ -11931,12 +11954,15 @@ ${_netdiskHtml}
       if(_isCg51){
         const eps=(p._allEpisodes||d.pans||[]).filter(e=>e&&e.url);
         let epBox=document.getElementById('cg51EpList');
-        if(!epBox){ epBox=document.createElement('div'); epBox.id='cg51EpList'; epBox.className='cg51-ep-list'; hc.appendChild(epBox); }
+        const zone=document.getElementById('cg51VideoZone');
+        if(zone){
+        if(!epBox){ epBox=document.createElement('div'); epBox.id='cg51EpList'; epBox.className='cg51-ep-list'; zone.appendChild(epBox); }
         if(eps.length>1){
           const curUrl=_playTarget&&_playTarget.url;
           epBox.innerHTML=eps.map((e,i)=>'<button type="button" class="cg51-ep-btn'+(e.url===curUrl?' active':'')+'" data-epi="'+i+'">'+esc(e.name||('第'+(i+1)+'集'))+'</button>').join('');
           epBox.onclick=(ev)=>{ const t=ev.target.closest('.cg51-ep-btn'); if(!t) return; const e=eps[+t.dataset.epi]; if(!e) return; _playTarget=e; refreshPlayBtn(true); playPan(e); };
         }else{ epBox.innerHTML=''; }
+        }
       }
     }
 function _normPanType(p){
