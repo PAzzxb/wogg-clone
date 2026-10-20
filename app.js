@@ -7648,9 +7648,7 @@ function _initCg51HeroCarousel(entries){
     _dotWrap.className='cg51-hero-dots';
     _ctl.appendChild(_dotWrap);
     const n=entries.length;
-    _dotWrap.innerHTML = n<=8
-      ? entries.map(function(_,i){return '<i class="cg51-hero-dot'+(i===0?' on':'')+'" data-i="'+i+'"></i>';}).join('')
-      : '<span class="cg51-hero-count">1/'+n+'</span>';
+    _dotWrap.innerHTML = '<span class="cg51-hero-count">1/'+n+'</span>';
     let _curIdx=0;
     function go(i){
       const cur=_bgRot.active==='A'?A:B, nxt=_bgRot.active==='A'?B:A;
@@ -11766,14 +11764,22 @@ async function _loadDetailContent(v){
     })();
 
     panel.innerHTML=`
+${(_isCg51Det)?'<div class="cg51-video-zone" id="cg51VideoZone"></div>':''}
+${(_isCg51Det && d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length&&!(/站务公告/.test((d.info&&d.info._cg51Body)||'')))?'<section class="det-cg51-carousel-sec" id="cg51CarouselSec"><div class="cg51-carousel" id="cg51Carousel"><div class="cg51-car-track">'+d.info._cg51CarImgs.map(function(u){return '<div class="cg51-car-cell"><img data-cg51-src="'+esc(u)+'" alt=""></div>';}).join('')+'</div><button type="button" class="cg51-car-arrow prev" aria-label="上一张">&#8249;</button><button type="button" class="cg51-car-arrow next" aria-label="下一张">&#8250;</button><div class="cg51-car-dots" id="cg51CarDots"></div></div></section>':''}
 <div class="det-title-wrap" id="detTitleWrap">
   <img class="det-logo" id="detLogo" alt="" hidden referrerpolicy="no-referrer">
   <div class="det-bigtitle" id="detBigTitle" title="${esc(title)}">${esc(title)}</div>
 </div>
-<div class="det-genres" id="detGenres"></div>
-${(_isCg51Det)?'<div class="cg51-video-zone" id="cg51VideoZone"></div>':''}
-${(_isCg51Det && d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length&&!(/站务公告/.test((d.info&&d.info._cg51Body)||'')))?'<section class="det-cg51-carousel-sec" id="cg51CarouselSec"><div class="cg51-carousel" id="cg51Carousel"><div class="cg51-car-track">'+d.info._cg51CarImgs.map(function(u){return '<div class="cg51-car-cell"><img data-cg51-src="'+esc(u)+'" alt=""></div>';}).join('')+'</div><button type="button" class="cg51-car-arrow prev" aria-label="上一张">&#8249;</button><button type="button" class="cg51-car-arrow next" aria-label="下一张">&#8250;</button><div class="cg51-car-dots" id="cg51CarDots"></div></div></section>':''}
-${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length)))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+'</section>':''}
+<div class="det-intro-collapse" id="detIntroCollapse">
+  <div class="det-intro-head" id="detIntroHead">
+    <span class="det-intro-arrow" id="detIntroArrow">&#8250;</span>
+    <span class="det-intro-label">简介</span>
+  </div>
+  <div class="det-intro-body" id="detIntroBody">
+    <div class="det-genres" id="detGenres"></div>
+    ${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length)))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+'</section>':''}
+  </div>
+</div>
 <div class="det-collapse-row">
 <section class="det-collapse det-res">
 <div class="det-collapse-head">
@@ -11808,6 +11814,16 @@ ${_netdiskHtml}
           document.body.appendChild(row);
         }
       }catch(e){}
+    })();
+    // 简介折叠区：点击头部展开/收起
+    (function(){
+      const ic=document.getElementById('detIntroCollapse');
+      if(!ic) return;
+      const head=ic.querySelector('.det-intro-head');
+      head.addEventListener('click',function(e){
+        e.stopPropagation();
+        ic.classList.toggle('open');
+      });
     })();
     const resBox=document.querySelector('body > .det-collapse-row .det-res') || panel.querySelector('.det-res');
     try{

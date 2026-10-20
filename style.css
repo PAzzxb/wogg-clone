@@ -1915,6 +1915,41 @@ html.nav-mode-top .navrow{
   margin:0 0 6px;text-shadow:none;
 }
 .det-genres:empty{display:none}
+/* ===== 简介折叠区（标题下方，可展开/收起）===== */
+.det-intro-collapse{
+  margin:8px 18px 0;border-radius:14px;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.10);
+  overflow:hidden;
+}
+.det-intro-head{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 14px;cursor:pointer;
+  user-select:none;
+  background:rgba(255,255,255,.04);
+}
+.det-intro-head:hover{background:rgba(255,255,255,.08)}
+.det-intro-arrow{
+  font-size:12px;color:rgba(255,255,255,.6);
+  transition:transform .25s ease;
+  display:inline-block;
+}
+.det-intro-collapse.open .det-intro-arrow{transform:rotate(180deg)}
+.det-intro-label{
+  font-size:13px;font-weight:700;color:rgba(255,255,255,.88);
+  letter-spacing:.04em;
+}
+.det-intro-body{
+  max-height:0;overflow:hidden;
+  transition:max-height .35s ease;
+  padding:0 14px;
+}
+.det-intro-collapse.open .det-intro-body{
+  max-height:60vh;
+  padding:10px 14px 14px;
+}
+.det-intro-body .det-genres{margin:0 0 8px}
+.det-intro-body .det-cg51-content{margin:0}
 /* ===== 图文正文（51吃瓜等帖子详情：正文 + 配图）===== */
 .det-article-body{
   margin:10px 18px 26px;
@@ -2012,21 +2047,16 @@ html.nav-mode-top .navrow{
 .cg51-hero-arrow:active{transform:scale(.95)}
 .cg51-hero-arrow.prev{left:14px;transform:translateY(-50%)}
 .cg51-hero-arrow.next{right:14px;transform:translateY(-50%)}
-/* 圆点/计数 */
+/* 轮播计数（1/N，无圆点） */
 .cg51-hero-dots{
   position:absolute;bottom:18px;left:0;right:0;z-index:5;
-  display:flex;justify-content:center;gap:6px;
-  pointer-events:auto;
+  display:flex;justify-content:center;
+  pointer-events:none;
 }
-.cg51-hero-dot{
-  width:8px;height:8px;border-radius:50%;
-  background:rgba(255,255,255,.45);cursor:pointer;
-  transition:background .2s,transform .2s;
-}
-.cg51-hero-dot.on{background:#fff;transform:scale(1.25)}
 .cg51-hero-count{
-  font-size:12px;color:rgba(255,255,255,.92);
-  background:rgba(0,0,0,.5);padding:3px 10px;border-radius:12px;
+  font-size:13px;color:rgba(255,255,255,.92);
+  background:rgba(0,0,0,.5);padding:4px 12px;border-radius:14px;
+  font-weight:600;letter-spacing:.02em;
 }
 /* 封面图点图看大图 */
 #cg51Lightbox{
