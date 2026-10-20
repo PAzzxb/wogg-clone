@@ -10474,6 +10474,12 @@ const CG51_NOTICE_RE=/(招募|投稿|稿费|征稿|致歉|道歉|致歉信|公�
 function chigua51IsNotice(title){
   return CG51_NOTICE_RE.test(String(title||''));
 }
+/* 推广/引流变现帖判定：站点首页与列表常混推「51吃瓜创造野生商机」「瓜友凭借分享黑料月入过万」等招募变现类推广，
+ * 它们伪装成普通吃瓜帖（非 ad-item 广告位），需按标题关键词拦截，避免出现在列表与详情中 */
+const CG51_PROMO_RE=/(野生商机|月入过万|日入过万|盆满钵满|瓜友凭借分享|创造野生|瓜友招募|招募瓜友|分享黑料.*赚|引流变现|副业变现|项目变现|带你赚钱|瓜友变现|躺赚)/i;
+function chigua51IsPromo(title){
+  return CG51_PROMO_RE.test(String(title||''));
+}
 /* 站点导航/导流段关键词：每帖重复的地址列表、APP 下载、分享提示等噪音（命中即整段剔除） */
 const CG51_NAV_RE=/(最新地址|最新域名|新地址|海外地址|翻墙访问|备用地址|备用域名|下载\s*app|app下载|福利导航|成人福利|回家的路|重要提示|温馨提示|防迷路|收藏本站|关注官方|官方客服|商务合作|广告合作|分享5|吃瓜请告知|复制网址|浏览器打开|邮箱联系|裸聊|常见问题|往期内容|投稿方式|加入我们|关于我们|热门吃瓜)/i;
 /* 51吃瓜图片水合：封面/正文图 CDN 返回 binary/octet-stream，Chromium <img> 与 background 均拒显。
@@ -10721,6 +10727,8 @@ function chigua51ParseCards(html, s, base){
     if(!title) continue;   // 站点坏卡（标题为空）跳过，不用 #id 兜底
     // 站务公告帖过滤：招募/投稿/稿费/致歉/公告/声明/修复/播放异常/权益/共创/新域名/防迷路等非吃瓜内容
     if(chigua51IsNotice(title)) continue;
+    // 推广/引流变现帖过滤：51吃瓜创造野生商机、瓜友分享黑料月入过万等招募变现类伪装帖
+    if(chigua51IsPromo(title)) continue;
     let remark='';
     const dm=blk.match(/itemprop="datePublished"\s+content="(\d{4})-(\d{2})-(\d{2})/);
     if(dm) remark=dm[2]+'-'+dm[3];
@@ -10905,6 +10913,11 @@ async function chigua51Detail(v){
     // 站务公告帖拦截：命中公告关键词 → 仅返回提示，不渲染正文与资源
     if(chigua51IsNotice(info.title)){
       info._cg51Body='<p style="color:var(--muted)">该帖子为站务公告（非吃瓜内容），已按规则屏蔽。</p>';
+      return {info,pans};
+    }
+    // 推广/引流变现帖拦截：命中推广关键词 → 仅返回提示，不渲染正文与资源
+    if(chigua51IsPromo(info.title)){
+      info._cg51Body='<p style="color:var(--muted)">该帖子为推广/引流变现内容，已按规则屏蔽。</p>';
       return {info,pans};
     }
     const og=html.match(/property="og:image"\s+content="([^"]+)"/i);
