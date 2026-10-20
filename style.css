@@ -1783,10 +1783,17 @@ html.nav-mode-top .navrow{
 }
 /* 51吃瓜：全屏海报适配手机，去掉渐变遮罩让图片全屏清晰显示 */
 #sheet.cg51-det .det-hero-scrim{display:none!important}
-#sheet.cg51-det.landscape-mode .det-hero{
-  aspect-ratio:16/9 !important;max-height:none !important;min-height:100vh !important;
+/* 51吃瓜：海报容器直接撑满视口（手机竖屏也全屏），不受 2/3 aspect-ratio 限制 */
+#sheet.cg51-det .det-hero{
+  min-height:100vh !important;
+  aspect-ratio:auto !important;max-height:none !important;
   background:transparent !important;
   overflow:visible !important;
+}
+/* 51吃瓜：sheet 本身也全屏，不限制内容 */
+#sheet.cg51-det{
+  display:block !important;
+  overflow-y:auto !important;
 }
 #sheet.cg51-det .det-hero-bg{
   background-position:center center;
