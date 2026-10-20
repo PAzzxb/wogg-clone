@@ -3530,9 +3530,27 @@ body.sheet-open #backTop{opacity:0!important;pointer-events:none!important}
   border-radius:var(--radius-md) !important;
 }
 .det-play-btn{
+  position:relative;overflow:visible !important;
+  display:inline-flex !important;align-items:center !important;justify-content:center !important;
+  color:#1a1a1a !important;                 /* 深色三角形图标 */
+  cursor:pointer;
+  width:62px !important;height:62px !important;padding:0 !important;
+  border-radius:50% !important;             /* 圆形（修复白色方块□） */
+  background:rgba(255,255,255,.94) !important;
+  border:none !important;
+  box-shadow:0 6px 24px rgba(0,0,0,.28) !important;
   backdrop-filter:none !important;
   -webkit-backdrop-filter:none !important;
-  /* 保持 wogg 主题色圆形播放钮，不被液态玻璃层改成白底 */
+  /* 修复：原版 wogg 基础样式，确保 SVG 播放图标可见、形状为圆形，
+     不被暗色主题/液态玻璃层改白底导致三角形不可见 */
+}
+.det-play-btn svg{width:22px !important;height:22px !important;margin-left:3px !important;fill:currentColor !important}
+.det-play-btn::before{display:none !important;content:none !important;animation:none !important}
+.det-play-btn.valid{ color:var(--green) !important; }
+.det-hero-cta .det-play-btn:active{
+  transform:scale(.94) !important;
+  background:rgba(255,255,255,.98) !important;
+  box-shadow:0 3px 14px rgba(0,0,0,.22) !important;
 }
 #backTop{
   width:40px !important;height:40px !important;
