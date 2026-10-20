@@ -1390,25 +1390,21 @@ html.nav-mode-top .src-row-top{
   order:1;
 }
 /* ===== 二级分类下拉面板：收进一个按钮里（对齐用户需求） ===== */
-/* 分组 chip：带下拉三角，视觉与普通 chip 一致 */
-.chip.has-sub{
-  padding-right:30px;
-  position:relative;
-}
+/* 分组 chip：下拉三角贴字右侧、垂直居中（flex 正常流，不再绝对定位吸在 chip 右缘）；
+   三角用 currentColor 跟随文字亮度，比固定半透明更明显 */
 .chip.has-sub::after{
   content:'';
-  position:absolute;
-  right:10px;top:50%;
+  flex-shrink:0;
+  margin-left:6px;
   width:0;height:0;
   border-left:5px solid transparent;
   border-right:5px solid transparent;
-  border-top:6px solid rgba(255,255,255,.62);
-  transform:translateY(-2px);
+  border-top:6px solid currentColor;
   transition:transform .22s ease;
 }
 .chip.has-sub.drop-open::after{
-  transform:translateY(1px) rotate(180deg);
-  border-top-color:rgba(255,255,255,.95);
+  transform:rotate(180deg);
+  color:#fff;
 }
 /* 下拉面板：固定在一级 chips 行下方，不随页面滚动，不与站源坞重叠 */
 #catDropPanel{
