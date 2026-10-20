@@ -10385,7 +10385,7 @@ function chigua51IsNotice(title){
   return CG51_NOTICE_RE.test(String(title||''));
 }
 /* 站点导航/导流段关键词：每帖重复的地址列表、APP 下载、分享提示等噪音（命中即整段剔除） */
-const CG51_NAV_RE=/(最新地址|最新域名|新地址|海外地址|翻墙访问|备用地址|备用域名|下载\s*app|app下载|福利导航|成人福利|回家的路|重要提示|温馨提示|防迷路|收藏本站|关注官方|官方客服|商务合作|广告合作|分享5|吃瓜请告知|复制网址|浏览器打开|邮箱联系|裸聊)/i;
+const CG51_NAV_RE=/(最新地址|最新域名|新地址|海外地址|翻墙访问|备用地址|备用域名|下载\s*app|app下载|福利导航|成人福利|回家的路|重要提示|温馨提示|防迷路|收藏本站|关注官方|官方客服|商务合作|广告合作|分享5|吃瓜请告知|复制网址|浏览器打开|邮箱联系|裸聊|常见问题|往期内容|投稿方式|加入我们|关于我们|热门吃瓜)/i;
 /* 51吃瓜图片水合：封面/正文图 CDN 返回 binary/octet-stream，Chromium <img> 与 background 均拒显。
  * 方案：fetch → arrayBuffer → 魔数判真实 MIME → new Blob → objectURL → img.src。
  * 列表封面与详情底部图区通用；objectURL 按 URL 缓存去重；视口内立即水合，其余 IO 懒加载，并发 4。 */
@@ -10691,6 +10691,9 @@ function chigua51CleanBody(html, base){
   body=chigua51RemoveDivBlocks(body, 'btn-download'); // APP 下载钮
   body=chigua51RemoveTagBlocks(body, 'blockquote'); // 站方地址通告（每帖重复的导航噪音）
   body=body.replace(/<section\b[^>]*hot-news-section[^>]*>[\s\S]*?<\/section\s*>/gi,''); // 🔥重磅热瓜🔥 热闻区（每帖重复的标题党导流）
+  body=body.replace(/<h3\b[^>]*class="[^"]*footer-link[^"]*"[^>]*>[\s\S]*?<\/h3\s*>/gi,''); // 源站页脚链接组（常见问题/往期内容/投稿方式/回家的路/加入我们/关于我们，每帖重复）
+  body=body.replace(/<p\b[^>]*>\s*(?:<strong[^>]*>\s*)?\s*🔥\s*热门吃瓜\s*(?:<\/strong\s*>)?\s*<\/p\s*>/gi,''); // 🔥热门吃瓜 标题段
+  body=body.replace(/<table\b[\s\S]*?<\/table\s*>/gi,'');                                    // 热门吃瓜全站链接导航表（纯导流噪音）
   body=chigua51RemoveDivBlocks(body, 'links-list');       // 最新地址/海外地址/备用地址
   body=chigua51RemoveDivBlocks(body, 'app-download');     // 下载app(免费吃瓜)
   body=chigua51RemoveDivBlocks(body, 'navigation-link');  // 福利导航(成人福利)
