@@ -5330,6 +5330,32 @@ function tubexExtractMp4(html, base){
   if(m3) return m3[0];
   return null;
 }
+// OKXXX：/get_file/.../xxx.mp4/ 看着是 mp4，302 后其实是 HLS 主播放列表
+// （content-type: application/vnd.apple.mpegurl，但 URL 后缀仍像 .mp4）。
+// 蜂蜜影视(Fongmi)等内置播放器不会嗅探 content-type，拿到这种地址会按「直连 mp4」
+// 处理而打不开；外调播放器会嗅探，所以能播。
+// 这里解析主播放列表，取出真正的 .m3u8 变体地址，让内置/外调/浏览器都能识别为 HLS。
+async function okxxxPickVariant(manifestUrl){
+  try{
+    if(!manifestUrl) return null;
+    const r=await get({id:'okxxx',domains:['https://okxxxx.net']}, manifestUrl, 14, true);
+    const text=String((r&&r.html)||'');
+    if(!/#EXTM3U/.test(text)) return null;   // 不是 HLS 清单就保持原地址
+    const lines=text.split(/\r?\n/), variants=[];
+    for(let i=0;i<lines.length;i++){
+      if(!/^#EXT-X-STREAM-INF:/i.test(lines[i])) continue;
+      const nxt=(lines[i+1]||'').trim();
+      if(!/^https?:\/\/\S+\.m3u8/i.test(nxt)) continue;
+      const bw=parseInt((/BANDWIDTH=(\d+)/i.exec(lines[i])||[])[1]||'0',10)||0;
+      const res=(/RESOLUTION=(\d+)x(\d+)/i.exec(lines[i])||[]);
+      variants.push({url:nxt, bw:bw, h:parseInt(res[2]||'0',10)||0});
+    }
+    if(!variants.length) return null;
+    // 取最高码率（同码率时取分辨率更高的）
+    variants.sort(function(a,b){ return (b.bw-a.bw)||(b.h-a.h); });
+    return variants[0].url;
+  }catch(e){ return null; }
+}
 
 
 /* ===== 里番：Xanimu + Hanime + CartoonPorno（合并站源，对齐麻豆结构）===== */
@@ -8550,6 +8576,13 @@ async function playPan(p){
         const rTx=await get(sTx, pageUrl, 14, true);
         const real=tubexExtractMp4(rTx&&rTx.html||'', rTx&&rTx.base||'https://okxxxx.net/');
         if(real){ p.url=real; u=real; p._online=true; }
+        // 该地址实为 HLS 主播放列表（后缀却像 .mp4）：换成真正的 .m3u8 变体地址。
+        // 外调播放器能播是因为它会嗅探 content-type；蜂蜜影视等内置播放器不会嗅探，
+        // 拿到 .mp4 结尾会当直连 mp4 处理而打不开，故这里显式给出 .m3u8。
+        try{
+          const _v=await okxxxPickVariant(u);
+          if(_v){ p.url=_v; u=_v; }
+        }catch(eVar){}
       }
     }catch(eTxp){ try{console.warn('[okxxx play]',eTxp)}catch(e2){} }
   }
