@@ -2315,7 +2315,9 @@ function card(v,i){
         }
         if(v.siteId==='cg51'||v._chigua51Id){
           // 51吃瓜封面 CDN 返回 binary/octet-stream，<img> 直连拒显 → data-cg51-src 走 fetch+Blob 水合
-          return '<img loading="lazy" referrerpolicy="no-referrer" data-cg51-src="'+esc(v.pic)+'" onload="window._posterOk&&window._posterOk(this)" onerror="window._posterFail&&window._posterFail(this)">';
+          // 不用 loading="lazy"：加载时机由 chigua51HydrateAll（视口内立即 + IO）精确管理，
+          // lazy 会把「已设好 blob src 但还在视口外」的图拦着不发请求，与预载策略相悖
+          return '<img referrerpolicy="no-referrer" data-cg51-src="'+esc(v.pic)+'" onload="window._posterOk&&window._posterOk(this)" onerror="window._posterFail&&window._posterFail(this)">';
         }
         return '<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(v.pic)+'" onload="window._posterOk&&window._posterOk(this)" onerror="window._posterFail&&window._posterFail(this)">';
       }
@@ -11522,7 +11524,7 @@ async function _loadDetailContent(v){
 </div>
 <div class="det-genres" id="detGenres"></div>
 ${(_isCg51Det)?'<div class="cg51-video-zone" id="cg51VideoZone"></div>':''}
-${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51Imgs&&d.info._cg51Imgs.length)))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+((d.info&&d.info._cg51Imgs&&d.info._cg51Imgs.length)?'<div class="det-cg51-imgs" id="cg51ImgsSec"><div class="det-cg51-imgs-head">帖子图片<em>'+d.info._cg51Imgs.length+' 张</em></div><div class="cg51-img-grid">'+d.info._cg51Imgs.map(function(u){return '<div class="cg51-img-cell"><img data-cg51-src="'+esc(u)+'" loading="lazy" alt=""></div>';}).join('')+'</div></div>':'')+'</section>':''}
+${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51Imgs&&d.info._cg51Imgs.length)))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+((d.info&&d.info._cg51Imgs&&d.info._cg51Imgs.length)?'<div class="det-cg51-imgs" id="cg51ImgsSec"><div class="det-cg51-imgs-head">帖子图片<em>'+d.info._cg51Imgs.length+' 张</em></div><div class="cg51-img-grid">'+d.info._cg51Imgs.map(function(u){return '<div class="cg51-img-cell"><img data-cg51-src="'+esc(u)+'" alt=""></div>';}).join('')+'</div></div>':'')+'</section>':''}
 <div class="det-collapse-row">
 <section class="det-collapse det-res">
 <div class="det-collapse-head">
