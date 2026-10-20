@@ -10516,29 +10516,93 @@ function chigua51InitCarousel(car){
       if(Math.abs(dx)>10) moved=true;
       if(Math.abs(dx)>50) go(dx<0?cur+1:cur-1);
     });
-    // 点当前图看大图（拖拽切换过则不弹灯箱）
+    // 点当前图看大图（带整个图集 + 当前索引，灯箱里可左右翻；拖拽切换过则不弹）
     car.addEventListener('click',function(e){
       if(moved){ moved=false; return; }
       const im=e.target&&e.target.closest&&e.target.closest('img'); if(!im) return;
-      const src=im.src||im.getAttribute('data-cg51-src'); if(src) chigua51Lightbox(src);
+      const src=im.src||im.getAttribute('data-cg51-src'); if(!src) return;
+      const list=cells.map(function(c){ return (c.querySelector('img')||{}).getAttribute ? c.querySelector('img').getAttribute('data-cg51-src') : ''; }).filter(Boolean);
+      chigua51Lightbox(src, list.length>1?list:null, cur);
     });
     // 初始：水合首张 + 相邻两张（其余切换到跟前再加载）
     hydrate(0); hydrate(1); hydrate(n-1);
   }catch(e){}
 }
-/* 底部图区点击看大图（轻量 lightbox） */
-function chigua51Lightbox(url){
+/* 全屏大图浏览器：支持图集左右切换（箭头/滑动/拖拽/键盘），list 为原链数组，idx 为起始张 */
+function chigua51Lightbox(url, list, idx){
   try{
     let ov=document.getElementById('cg51Lightbox');
     if(!ov){
       ov=document.createElement('div'); ov.id='cg51Lightbox';
-      ov.innerHTML='<img alt="">';
-      ov.addEventListener('click',function(){ ov.classList.remove('show'); });
+      ov.innerHTML='<img alt="" data-cg51-src="">'
+        +'<button type="button" class="cg51-lb-arrow prev" aria-label="上一张">&#8249;</button>'
+        +'<button type="button" class="cg51-lb-arrow next" aria-label="下一张">&#8250;</button>'
+        +'<span class="cg51-lb-count"></span>';
       document.body.appendChild(ov);
+      const close=function(){ ov.classList.remove('show'); ov._lbList=null; };
+      ov.addEventListener('click',function(e){
+        if(e.target.closest&&e.target.closest('.cg51-lb-arrow')) return;
+        if(e.target.closest&&e.target.closest('img')&&ov._lbList&&ov._lbList.length>1) return; // 单张时才点图关；多张时点图不误关
+        close();
+      });
+      ov.querySelector('.cg51-lb-arrow.prev').addEventListener('click',function(e){ e.stopPropagation(); chigua51LbGo(-1); });
+      ov.querySelector('.cg51-lb-arrow.next').addEventListener('click',function(e){ e.stopPropagation(); chigua51LbGo(1); });
+      // 触摸/鼠标拖拽左右切
+      let sx=0, sy=0, dragging=false;
+      ov.addEventListener('touchstart',function(e){ const t=e.touches[0]; sx=t.clientX; sy=t.clientY; dragging=true; },{passive:true});
+      ov.addEventListener('touchend',function(e){
+        if(!dragging) return; dragging=false;
+        const t=e.changedTouches[0], dx=t.clientX-sx, dy=t.clientY-sy;
+        if(Math.abs(dx)>40&&Math.abs(dx)>Math.abs(dy)) chigua51LbGo(dx<0?1:-1);
+      });
+      ov.addEventListener('mousedown',function(e){ sx=e.clientX; dragging=true; });
+      ov.addEventListener('mouseup',function(e){
+        if(!dragging) return; dragging=false;
+        const dx=e.clientX-sx;
+        if(Math.abs(dx)>50) chigua51LbGo(dx<0?1:-1);
+      });
+      // 键盘左右切
+      ov._lbKey=function(e){
+        if(!ov.classList.contains('show')) return;
+        if(e.key==='ArrowLeft') chigua51LbGo(-1);
+        else if(e.key==='ArrowRight') chigua51LbGo(1);
+        else if(e.key==='Escape') close();
+      };
+      document.addEventListener('keydown', ov._lbKey);
     }
     const im=ov.querySelector('img');
-    im.onload=function(){ ov.classList.add('show'); };
-    im.src=url;
+    ov._lbList=(list&&list.length)?list.slice():[url];
+    ov._lbIdx=Math.max(0, Math.min((idx|0)||0, ov._lbList.length-1));
+    const multi=ov._lbList.length>1;
+    ov.querySelectorAll('.cg51-lb-arrow').forEach(function(b){ b.style.display=multi?'':'none'; });
+    const cnt=ov.querySelector('.cg51-lb-count');
+    if(cnt){ cnt.textContent=multi?(ov._lbIdx+1)+'/'+ov._lbList.length:''; cnt.style.display=multi?'':'none'; }
+    chigua51LbShow(ov._lbIdx);
+  }catch(e){}
+}
+/* 灯箱相对当前切 k 张（-1 上一张 / +1 下一张，循环） */
+function chigua51LbGo(k){
+  try{
+    const ov=document.getElementById('cg51Lightbox');
+    if(!ov||!ov._lbList||!ov._lbList.length) return;
+    const n=ov._lbList.length;
+    ov._lbIdx=(((ov._lbIdx+k)%n)+n)%n;
+    chigua51LbShow(ov._lbIdx);
+  }catch(e){}
+}
+function chigua51LbShow(i){
+  try{
+    const ov=document.getElementById('cg51Lightbox');
+    if(!ov||!ov._lbList) return;
+    const im=ov.querySelector('img');
+    ov.classList.add('show');   // 先展开灯箱，图水合后即显
+    im.dataset.cg51Done='';     // 重置水合标记，允许换张重新 hydrate
+    im.setAttribute('data-cg51-src', ov._lbList[i]);
+    const cnt=ov.querySelector('.cg51-lb-count');
+    if(cnt) cnt.textContent=(i+1)+'/'+ov._lbList.length;
+    if(typeof chigua51HydrateImg==='function'){
+      Promise.resolve(chigua51HydrateImg(im)).catch(function(){});
+    }else{ im.src=ov._lbList[i]; }
   }catch(e){}
 }
 function chigua51StripTags(h){
@@ -11596,7 +11660,7 @@ async function _loadDetailContent(v){
 </div>
 <div class="det-genres" id="detGenres"></div>
 ${(_isCg51Det)?'<div class="cg51-video-zone" id="cg51VideoZone"></div>':''}
-${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length)))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+((d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length&&!(/站务公告/.test(d.info._cg51Body||'')))?'<div class="cg51-carousel" id="cg51Carousel"><div class="cg51-car-track">'+d.info._cg51CarImgs.map(function(u){return '<div class="cg51-car-cell"><img data-cg51-src="'+esc(u)+'" alt=""></div>';}).join('')+'</div><button type="button" class="cg51-car-arrow prev" aria-label="上一张">&#8249;</button><button type="button" class="cg51-car-arrow next" aria-label="下一张">&#8250;</button><div class="cg51-car-dots" id="cg51CarDots"></div></div>':'')+'</section>':''}
+${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length)))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+'</section>':''}${(_isCg51Det && d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length&&!(/站务公告/.test((d.info&&d.info._cg51Body)||'')))?'<section class="det-cg51-carousel-sec" id="cg51CarouselSec"><div class="cg51-carousel" id="cg51Carousel"><div class="cg51-car-track">'+d.info._cg51CarImgs.map(function(u){return '<div class="cg51-car-cell"><img data-cg51-src="'+esc(u)+'" alt=""></div>';}).join('')+'</div><button type="button" class="cg51-car-arrow prev" aria-label="上一张">&#8249;</button><button type="button" class="cg51-car-arrow next" aria-label="下一张">&#8250;</button><div class="cg51-car-dots" id="cg51CarDots"></div></div></section>':''}
 <div class="det-collapse-row">
 <section class="det-collapse det-res">
 <div class="det-collapse-head">
