@@ -10688,8 +10688,9 @@ async function chigua51Detail(v){
     }
     const og=html.match(/property="og:image"\s+content="([^"]+)"/i);
     if(og&&!info.pic) info.pic=chigua51Abs(base, og[1]);
-    // 帖子全部图片（详情底部图区用；正文段落不再插图）
-    info._cg51Imgs=chigua51ExtractBodyImgs(html, base);
+    // 帖子配图提取已停用：详情内容卡只放「文字描述 + 封面代表图」（og:image 即封面），
+    // 不再渲染正文插图网格；chigua51ExtractBodyImgs 保留备用
+    // info._cg51Imgs=chigua51ExtractBodyImgs(html, base);
     // 视频 → 分集（一段一集；单段命名「在线」）
     const vids=chigua51ExtractVideos(html);
     const pageUrl=chigua51Abs(base, path);
@@ -11524,7 +11525,7 @@ async function _loadDetailContent(v){
 </div>
 <div class="det-genres" id="detGenres"></div>
 ${(_isCg51Det)?'<div class="cg51-video-zone" id="cg51VideoZone"></div>':''}
-${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51Imgs&&d.info._cg51Imgs.length)))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+((d.info&&d.info._cg51Imgs&&d.info._cg51Imgs.length)?'<div class="det-cg51-imgs" id="cg51ImgsSec"><div class="det-cg51-imgs-head">帖子图片<em>'+d.info._cg51Imgs.length+' 张</em></div><div class="cg51-img-grid">'+d.info._cg51Imgs.map(function(u){return '<div class="cg51-img-cell"><img data-cg51-src="'+esc(u)+'" alt=""></div>';}).join('')+'</div></div>':'')+'</section>':''}
+${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.pic||(d.info&&d.info.pic))))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+((d.pic||(d.info&&d.info.pic))&&!(d.info&&/站务公告/.test(d.info._cg51Body||''))?'<div class="det-cg51-cover"><img data-cg51-src="'+esc(d.pic||(d.info&&d.info.pic)||'')+'" alt=""></div>':'')+'</section>':''}
 <div class="det-collapse-row">
 <section class="det-collapse det-res">
 <div class="det-collapse-head">
@@ -11744,12 +11745,12 @@ function _normPanType(p){
     }
     refreshPlayBtn(false);
     ensurePlayReady(null);
-    // 51吃瓜：底部图区/封面水合（CDN 返 binary/octet-stream，需 fetch+Blob 重建 MIME）+ 点图看大图
+    // 51吃瓜：封面代表图水合（CDN 返 binary/octet-stream，需 fetch+Blob 重建 MIME）+ 点图看大图
     try{
       if(v&&(v.siteId==='cg51'||v._chigua51Id)){
-        chigua51HydrateAll(panel, true);   // 详情帖子图：立即全部水合（用户点开就是看图的）
-        const imgSec=document.getElementById('cg51ImgsSec');
-        if(imgSec) imgSec.addEventListener('click',function(e){
+        chigua51HydrateAll(panel, true);   // 封面图：立即水合（用户点开就是看图的）
+        const coverBox=panel.querySelector('.det-cg51-cover');
+        if(coverBox) coverBox.addEventListener('click',function(e){
           const im=e.target&&e.target.closest&&e.target.closest('img'); if(!im) return;
           const src=im.src||im.getAttribute('data-cg51-src'); if(src) chigua51Lightbox(src);
         });
