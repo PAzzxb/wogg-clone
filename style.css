@@ -1829,10 +1829,11 @@ html.nav-mode-top .navrow{
 #sheet.cg51-det .det-hero-bg{
   background-position:center center;
 }
-/* 51吃瓜：全屏背景图铺满整个视口，cover 保证无留边 */
-#sheet.cg51-det .det-hero-bg,
+/* 51吃瓜：轮播图完整显示——封面/正文配图多为竖长图，cover 会被裁成半截；
+   contain 整图等比可见，暗色底填充留白（容器 background-color 兜底） */
 #sheet.cg51-det .det-hero-bg-img{
-  background-size:cover !important;
+  background-size:contain !important;
+  background-repeat:no-repeat !important;
   background-position:center center !important;
 }
 /* 51吃瓜：去掉 hero 内部占位 img，全屏由 detHeroBg 承担 */

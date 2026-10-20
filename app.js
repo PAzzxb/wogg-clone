@@ -7661,13 +7661,17 @@ function _initCg51HeroCarousel(entries){
       const idx=((i%n)+n)%n;
       _curIdx=idx;
       const u=entries[idx];
-      _bgPreload(u,mySeq,su=>{
+      // 加载成功才铺图；单张失败保持当前海报，不把裂图/空白铺上
+      const probe=new Image();
+      probe.onload=function(){
         if(_bgRot.seq!==mySeq)return;
-        nxt.style.backgroundImage=`url("${su}")`;
+        nxt.style.backgroundImage=`url("${String(u).replace(/"/g,'')}")`;
         nxt.style.opacity='1';cur.style.opacity='0';
         _bgRot.active=nextActive;
-        try{ syncDetFrost(su); }catch(eF){}
-      });
+        try{ syncDetFrost(u); }catch(eF){}
+      };
+      probe.onerror=function(){ /* 单张失败：维持当前显示的海报 */ };
+      probe.src=u;
       // 更新底部计数
       const cnt=document.getElementById('cg51HeroCount');
       if(cnt) cnt.textContent=(idx+1)+'/'+n;
@@ -11683,12 +11687,15 @@ async function _loadDetailContent(v){
       // CDN 返 binary/octet-stream，需先 fetch+Blob 水合为 blob URL 才能被 Image 加载
       if((v.siteId==='cg51'||v._chigua51Id) && d.info && d.info._cg51CarImgs && d.info._cg51CarImgs.length){
         const rawList=d.info._cg51CarImgs;
+        // 逐张独立水合：单张失败只回落原始 URL，不再连累整组轮播（曾因一张失败全组黑屏）
         const hydrated=await Promise.all(rawList.map(function(u){
-          try{ return chigua51HydrateUrl(u); }catch(e){ return u; }
+          return Promise.resolve().then(function(){ return chigua51HydrateUrl(u); }).catch(function(){ return u||''; });
         }));
         if(_currentDetailItem!==v)return;
-        setBackdrops(hydrated);
-        _initCg51HeroCarousel(hydrated);
+        const list=hydrated.filter(Boolean);
+        if(!list.length) return;
+        setBackdrops(list);
+        _initCg51HeroCarousel(list);
         return;
       }
       if(entries&&entries.length)setBackdrops(entries);
