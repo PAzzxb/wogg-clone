@@ -8939,6 +8939,13 @@ const isJinpai=!!(p._jinpai || p.siteName==='金牌' || pageUrl.indexOf('jinpai:
     // ：播当前集时预热下一集（服务端落盘，切集更顺）
     // ：播当前集时预热下一集
 
+    // OKXXX：<source> 地址形如 /get_file/.../796345.mp4/，看着是 mp4，实测 302 跳转后
+    // 返回的是 HLS 主播放列表（content-type: application/vnd.apple.mpegurl，
+    // 实测 hls.js 可正常解析播放：readyState=4、currentTime 正常推进）。
+    // 因此必须显式标 hls——否则原生端按「直连 mp4」处理，拿到 HLS 清单解不出，
+    // 表现为「播放器打开了但黑屏/一直转圈」。
+    const _okxHls=!!(p&&(p.siteId==='okxxx'||p.siteName==='OKXXX'
+      ||/okxxxx\.net|okxxx\.(ws|one|vip|men)/i.test(String(u||''))));
     // 1) vodInline：原生播放页才有标题 + 线路名 + 海报（原版路径）
     if(u && fm && fm.vodInline){
       try{
@@ -8981,6 +8988,7 @@ const isJinpai=!!(p._jinpai || p.siteName==='金牌' || pageUrl.indexOf('jinpai:
           episodeIndex:(typeof p._playIndex==="number"?p._playIndex:0)
         };
         if(hdr) payload.headers=hdr;
+        if(_okxHls) payload.format='hls';   // OKXXX 的 .mp4 实为 HLS：显式告知原生端，避免按直连 mp4 播放失败
         await fm.vodInline(payload);
         return;
       }catch(e){ console&&console.warn&&console.warn('[play vodInline]',e); }
@@ -8989,7 +8997,8 @@ const isJinpai=!!(p._jinpai || p.siteName==='金牌' || pageUrl.indexOf('jinpai:
     // 2) fm.play：m3u8 才标 hls；是 mp4，标 hls 会导致播失败再自动跳集
     if(u && fm && fm.play){
       try{
-        const isMp4Direct=!!(isHongguo||isHuangdou||isManju||(p&&(p._lifan||p.siteId==='lifan'))||/\/api\/play/i.test(String(u))||/\.mp4(\?|$)/i.test(String(u))||/nosofiles|jmpres/i.test(String(u)));
+        // OKXXX 例外：URL 后缀是 .mp4，实质是 HLS，必须按 hls 处理（_okxHls 时不算直连 mp4）
+        const isMp4Direct=!!(isHongguo||isHuangdou||isManju||(p&&(p._lifan||p.siteId==='lifan'))||/\/api\/play/i.test(String(u))||/\.mp4(\?|$)/i.test(String(u))||/nosofiles|jmpres/i.test(String(u))) && !_okxHls;
         const opts={pic:pic,wallPic:pic};
         if(!isMp4Direct) opts.format='hls';
         if(hdr) opts.headers=hdr;
