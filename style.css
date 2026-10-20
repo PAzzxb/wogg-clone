@@ -1954,7 +1954,7 @@ html.nav-mode-top .navrow{
   white-space:nowrap;
 }
 .cg51-ep-btn.active{background:rgba(var(--accent-rgb),.24);border-color:rgba(var(--accent-rgb),.55);color:#fff}
-/* ===== 51吃瓜详情：底部内容卡（帖子介绍文字 + 帖子图片，整体位于播放入口之下）===== */
+/* ===== 51吃瓜详情：底部内容卡（帖子文字描述 + 封面代表图，整体位于播放入口之下）===== */
 .det-cg51-content{
   margin:2px 18px 18px;padding:14px 16px;
   border-radius:14px;background:var(--soft);border:1px solid var(--line);
@@ -1963,24 +1963,16 @@ html.nav-mode-top .navrow{
   margin:0;padding:0;border:none;background:transparent;border-radius:0;
 }
 .det-cg51-content .det-article-body:last-child{padding-bottom:0}
-.det-cg51-content .det-cg51-imgs{margin:14px 0 0}
-.det-cg51-content .det-cg51-imgs:first-child{margin-top:0}
-/* ===== 51吃瓜详情：底部帖子图区（正文图统一移此，点击看大图）===== */
-.det-cg51-imgs{margin:0 18px 22px}
-.det-cg51-imgs-head{
-  display:flex;align-items:center;gap:8px;
-  font-size:13px;font-weight:700;color:var(--text);margin:0 0 10px;
+/* 封面代表图：og:image 即列表封面那张，放大展示，点击看大图 */
+.det-cg51-cover{margin:14px 0 0}
+.det-cg51-cover:first-child{margin-top:0}
+.det-cg51-cover img{
+  display:block;width:100%;height:auto;max-height:78vh;object-fit:contain;
+  border-radius:10px;background:rgba(255,255,255,.05);
+  opacity:0;transition:opacity .25s;cursor:zoom-in;
 }
-.det-cg51-imgs-head em{font-style:normal;font-size:11px;color:var(--muted);font-weight:600}
-.cg51-img-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-@media (min-width:640px){.cg51-img-grid{grid-template-columns:repeat(3,1fr)}}
-.cg51-img-cell{border-radius:10px;overflow:hidden;background:rgba(255,255,255,.05)}
-.cg51-img-cell img{
-  display:block;width:100%;height:auto;max-height:72vh;object-fit:contain;
-  background:rgba(255,255,255,.05);opacity:0;transition:opacity .25s;cursor:zoom-in;
-}
-.cg51-img-cell img[src]{opacity:1}
-/* 图区点图看大图 */
+.det-cg51-cover img[src]{opacity:1}
+/* 封面图点图看大图 */
 #cg51Lightbox{
   position:fixed;inset:0;z-index:300;display:none;
   align-items:center;justify-content:center;
