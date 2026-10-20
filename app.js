@@ -1981,7 +1981,10 @@ function renderTabs(){
 }
 // 搜索代际计数器：每次「离开搜索结果页」就 +1，让仍在后台跑的旧搜索结果晚到也不会再去刷新当前页面
 let _searchGen=0,_catGen=0;
-/* 瞬时居中到横滑容器（不用 smooth，避免与手指惯性抢滚动） */
+/* 瞬时滚动到横滑容器可视区（就近原则，不用 smooth，避免与手指惯性抢滚动）
+   修复：原先无条件把激活 chip 居中，导致首屏第一个分类（如「玩偶电影」）
+   的左侧留白被顶出屏幕边缘（贴边裁切）。现改为：已完全可见则不滚动，
+   只有超出可视区时才就近滚回，不再强制居中。 */
 function centerChipInScroller(el){
   if(!el) return;
   let scroller=el.parentElement;
@@ -1996,7 +1999,15 @@ function centerChipInScroller(el){
   try{
     const er=el.getBoundingClientRect();
     const sr=scroller.getBoundingClientRect();
-    scroller.scrollLeft += (er.left+er.width/2)-(sr.left+sr.width/2);
+    const pad=6; /* 余量需小于容器左内边距 max(var(--gap),10px)，避免误滚动 */
+    /* 已完全可见（含余量）→ 不滚动，保持首屏左侧留白完整 */
+    if(er.left>=sr.left+pad && er.right<=sr.right-pad) return;
+    /* 就近滚动：哪边超出就只滚回哪边 */
+    if(er.left<sr.left+pad){
+      scroller.scrollLeft += er.left-(sr.left+pad);
+    }else{
+      scroller.scrollLeft += er.right-(sr.right-pad);
+    }
   }catch(e){}
 }
 /* iOS 风格横滑：锁定横向后接管手势 → 跟手 + 边缘橡皮筋 + 松手惯性衰减 */
