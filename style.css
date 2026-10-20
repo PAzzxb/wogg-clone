@@ -1757,7 +1757,7 @@ html.nav-mode-top .navrow{
 /* ===== Emby 风格全屏海报背景（独立于 sheet，fixed 不受 sheet transform 影响）===== */
 .det-hero-bg{
   position:fixed;inset:0;z-index:38;          /* 低于 sheet(40)，详情打开后透过透明的 sheet 透出 */
-  background-size:cover;background-position:center 12%;
+  background-size:cover;background-position:center center;
   background-color:#0d1117;                   /* 深色兜底：海报图加载前也不会透出主页 */
   opacity:0;pointer-events:none;
   transition:opacity .4s ease;
@@ -1767,7 +1767,7 @@ html.nav-mode-top .navrow{
 /* 轮播图层：两层交替 crossfade；淡出时露出的是 detHeroBg 深色底而非主页 */
 .det-hero-bg-img{
   position:absolute;inset:0;
-  background-size:cover;background-position:center 12%;
+  background-size:cover;background-position:center center;
   opacity:0;transition:opacity .55s ease;
   will-change:opacity;
 }
@@ -1781,6 +1781,23 @@ html.nav-mode-top .navrow{
     rgba(13,17,23,.28) 82%,
     rgba(13,17,23,.5) 100%);
 }
+/* 51吃瓜：全屏海报适配手机，去掉渐变遮罩让图片全屏清晰显示 */
+#sheet.cg51-det .det-hero-scrim{display:none!important}
+#sheet.cg51-det.landscape-mode .det-hero{
+  aspect-ratio:16/9 !important;max-height:none !important;min-height:100vh !important;
+  background:transparent !important;
+}
+#sheet.cg51-det .det-hero-bg{
+  background-position:center center;
+}
+/* 51吃瓜：全屏背景图铺满整个视口，cover 保证无留边 */
+#sheet.cg51-det .det-hero-bg,
+#sheet.cg51-det .det-hero-bg-img{
+  background-size:cover !important;
+  background-position:center center !important;
+}
+/* 51吃瓜：去掉 hero 内部占位 img，全屏由 detHeroBg 承担 */
+#sheet.cg51-det .det-hero-img{display:none!important}
 /* 横版沉浸式：sheet 背景透明（透出后面的全屏海报），用 flex 纵向排让内容沉底 */
 .sheet.landscape-mode{background:transparent!important;display:flex;flex-direction:column}
 .sheet.landscape-mode.active{transform:none!important}
@@ -2030,9 +2047,9 @@ html.nav-mode-top .navrow{
   position:absolute;inset:0;z-index:4;
   pointer-events:none;
 }
-/* 左右箭头 */
+/* 左右箭头：移到中间竖排 */
 .cg51-hero-arrow{
-  position:absolute;top:50%;z-index:5;
+  position:absolute;left:50%;z-index:5;
   width:40px;height:40px;border-radius:50%;
   border:none;cursor:pointer;
   background:rgba(0,0,0,.45);color:#fff;
@@ -2045,18 +2062,52 @@ html.nav-mode-top .navrow{
 }
 .cg51-hero-arrow:hover{background:rgba(0,0,0,.65);transform:scale(1.08)}
 .cg51-hero-arrow:active{transform:scale(.95)}
-.cg51-hero-arrow.prev{left:14px;transform:translateY(-50%)}
-.cg51-hero-arrow.next{right:14px;transform:translateY(-50%)}
-/* 轮播计数（1/N，无圆点） */
-.cg51-hero-dots{
-  position:absolute;bottom:18px;left:0;right:0;z-index:5;
-  display:flex;justify-content:center;
-  pointer-events:none;
+.cg51-hero-arrow.prev{top:calc(50% - 56px);transform:translateX(-50%)}
+.cg51-hero-arrow.next{top:calc(50% + 56px);transform:translateX(-50%)}
+/* 51吃瓜详情页：所有框改透明 */
+#sheet.cg51-det .det-title-wrap,
+#sheet.cg51-det .det-intro-collapse,
+#sheet.cg51-det .det-intro-head,
+#sheet.cg51-det .det-intro-body,
+#sheet.cg51-det .det-collapse,
+#sheet.cg51-det .det-res,
+#sheet.cg51-det .det-collapse-head,
+#sheet.cg51-det .det-collapse-body,
+#sheet.cg51-det .det-res-pane,
+#sheet.cg51-det .pan-item,
+#sheet.cg51-det .pan-info,
+#sheet.cg51-det .pan-list,
+#sheet.cg51-det .det-src-label,
+#sheet.cg51-det .det-bigtitle,
+#sheet.cg51-det .det-genres,
+#sheet.cg51-det .det-article-body,
+#sheet.cg51-det .det-cg51-content{
+  background:transparent!important;
+  border:none!important;
+  border-radius:0!important;
+  box-shadow:none!important;
 }
-.cg51-hero-count{
-  font-size:13px;color:rgba(255,255,255,.92);
-  background:rgba(0,0,0,.5);padding:4px 12px;border-radius:14px;
-  font-weight:600;letter-spacing:.02em;
+#sheet.cg51-det .det-title-wrap{margin:0}
+#sheet.cg51-det .det-intro-collapse{border:none;background:transparent;margin:0}
+#sheet.cg51-det .det-intro-head{background:transparent;padding:0}
+#sheet.cg51-det .det-intro-body{padding:0}
+#sheet.cg51-det .det-intro-label{color:rgba(255,255,255,.7)}
+#sheet.cg51-det .det-intro-arrow{color:rgba(255,255,255,.5)}
+#sheet.cg51-det .det-collapse-row{background:transparent!important}
+#sheet.cg51-det .pan-name{color:rgba(255,255,255,.9)}
+#sheet.cg51-det .pan-meta{color:rgba(255,255,255,.6)}
+#sheet.cg51-det .pan-quality,
+#sheet.cg51-det .pan-url{background:transparent;color:rgba(255,255,255,.7)}
+/* 底部栏：播放按钮 + 计数 */
+.det-bottom-bar{
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  margin:8px 0 4px;padding:0 14px;
+}
+.cg51-video-zone{flex:none}
+.cg51-hero-count-bottom{
+  font-size:13px;color:rgba(255,255,255,.85);
+  background:rgba(0,0,0,.35);padding:3px 10px;border-radius:12px;
+  font-weight:600;
 }
 /* 封面图点图看大图 */
 #cg51Lightbox{

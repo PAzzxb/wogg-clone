@@ -142,6 +142,7 @@ function _doCloseSheet() {
   _currentDetailItem=null;   // 作废任何仍在 await 的 _loadDetailContent
   _initCg51HeroCarousel._inited=false;   // 下次打开详情允许重新初始化
   if(_cg51HeroRot.timer){clearInterval(_cg51HeroRot.timer);_cg51HeroRot.timer=null;}
+  sheet.classList.remove('cg51-det');   // 关闭详情时移除透明标记
   if (!sheet.classList.contains('active')) return;
   sheet.classList.remove('landscape-mode','res-open','sheet-anim-done');
   try{ document.querySelectorAll('body > .det-collapse-row').forEach(function(el){ el.remove(); }); }catch(e){}
@@ -7611,10 +7612,10 @@ function _bgProgressiveSet(layer,entry,seq){
     // 静默预热 fallback，仅在 primary 长期未显示时不强制切换，避免二次闪
   }
 }
-/* 51吃瓜：全屏海报区左右切换轮播（箭头/圆点/触摸滑动），复用 setBackdrops 的 A/B crossfade 图层 */
+/* 51吃瓜：全屏海报区左右切换轮播（箭头居中/触摸滑动），计数移到底部栏 */
 let _cg51HeroRot={timer:null,active:'A',seq:0};
 function _initCg51HeroCarousel(entries){
-  if(_initCg51HeroCarousel._inited) return;   // 防止同一详情重复初始化
+  if(_initCg51HeroCarousel._inited) return;
   _initCg51HeroCarousel._inited=true;
   try{
     stopBgRotation();
@@ -7624,14 +7625,14 @@ function _initCg51HeroCarousel(entries){
     const hero=document.getElementById('detHero');
     if(!A||!B||!entries||!entries.length||!hero) return;
     if(bg){bg.classList.add('show');bg.dataset.bd='1';}
-    // 控制层挂在 hero 内（在 sheet 上层，能收到触摸事件），而非 bg（在 sheet 后面）
+    // 控制层挂在 hero 内（在 sheet 上层，能收到触摸事件）
     let _ctl=document.getElementById('cg51HeroCtl');
     if(_ctl){_ctl.remove();}
     _ctl=document.createElement('div');
     _ctl.id='cg51HeroCtl';
     _ctl.className='cg51-hero-ctl';
     hero.appendChild(_ctl);
-    // 左右箭头
+    // 左右箭头：移到中间竖排
     let _prev=document.getElementById('cg51HeroPrev'),_next=document.getElementById('cg51HeroNext');
     if(_prev)_prev.remove();if(_next)_next.remove();
     _prev=document.createElement('button');
@@ -7640,15 +7641,7 @@ function _initCg51HeroCarousel(entries){
     _next=document.createElement('button');
     _next.id='cg51HeroNext';_next.className='cg51-hero-arrow next';_next.innerHTML='&#8250;';
     _ctl.appendChild(_next);
-    // 圆点/计数
-    let _dotWrap=document.getElementById('cg51HeroDots');
-    if(_dotWrap){_dotWrap.remove();}
-    _dotWrap=document.createElement('div');
-    _dotWrap.id='cg51HeroDots';
-    _dotWrap.className='cg51-hero-dots';
-    _ctl.appendChild(_dotWrap);
     const n=entries.length;
-    _dotWrap.innerHTML = '<span class="cg51-hero-count">1/'+n+'</span>';
     let _curIdx=0;
     function go(i){
       const cur=_bgRot.active==='A'?A:B, nxt=_bgRot.active==='A'?B:A;
@@ -7663,15 +7656,12 @@ function _initCg51HeroCarousel(entries){
         _bgRot.active=nextActive;
         try{ syncDetFrost(su); }catch(eF){}
       });
-      const ds=_dotWrap.querySelectorAll('.cg51-hero-dot');
-      for(let j=0;j<ds.length;j++) ds[j].classList.toggle('on',j===idx);
-      const cnt=_dotWrap.querySelector('.cg51-hero-count'); if(cnt) cnt.textContent=(idx+1)+'/'+n;
+      // 更新底部计数
+      const cnt=document.getElementById('cg51HeroCount');
+      if(cnt) cnt.textContent=(idx+1)+'/'+n;
     }
     _prev.addEventListener('click',function(e){e.stopPropagation();go(_curIdx-1);});
     _next.addEventListener('click',function(e){e.stopPropagation();go(_curIdx+1);});
-    _dotWrap.querySelectorAll('.cg51-hero-dot').forEach(function(d){
-      d.addEventListener('click',function(e){e.stopPropagation();go(parseInt(this.getAttribute('data-i'),10));});
-    });
     // 触摸滑动切换（在 hero 上，不会阻塞页面滚动）
     let sx=0,sy=0,dragging=false;
     _ctl.addEventListener('touchstart',function(e){const t=e.touches[0];sx=t.clientX;sy=t.clientY;dragging=true;moved=false;},{passive:true});
@@ -7693,7 +7683,9 @@ function _initCg51HeroCarousel(entries){
       else if(e.key==='ArrowRight')go(_curIdx+1);
     });
     go(0);
-    // 不自动轮播：仅用户手动切换（箭头/圆点/滑动/键盘）
+    // 初始化底部计数
+    const cntEl=document.getElementById('cg51HeroCount');
+    if(cntEl) cntEl.textContent='1/'+n;
     _cg51HeroRot.seq=mySeq;
     const sheet=$('#sheet');
     if(sheet){
@@ -11434,6 +11426,9 @@ function openDetail(v){
   }
   heroCta.innerHTML='';
 
+  // 51吃瓜详情：加 cg51-det 标记，让 CSS 把所有框改透明
+  sheet.classList.toggle('cg51-det', !!(v&&(v.siteId==='cg51'||v._chigua51Id)));
+
   sheet.classList.add('active');
   sheet.classList.remove('sheet-anim-done');
   clearTimeout(sheet._animDoneTimer);
@@ -11764,8 +11759,6 @@ async function _loadDetailContent(v){
     })();
 
     panel.innerHTML=`
-${(_isCg51Det)?'<div class="cg51-video-zone" id="cg51VideoZone"></div>':''}
-${(_isCg51Det && d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length&&!(/站务公告/.test((d.info&&d.info._cg51Body)||'')))?'<section class="det-cg51-carousel-sec" id="cg51CarouselSec"><div class="cg51-carousel" id="cg51Carousel"><div class="cg51-car-track">'+d.info._cg51CarImgs.map(function(u){return '<div class="cg51-car-cell"><img data-cg51-src="'+esc(u)+'" alt=""></div>';}).join('')+'</div><button type="button" class="cg51-car-arrow prev" aria-label="上一张">&#8249;</button><button type="button" class="cg51-car-arrow next" aria-label="下一张">&#8250;</button><div class="cg51-car-dots" id="cg51CarDots"></div></div></section>':''}
 <div class="det-title-wrap" id="detTitleWrap">
   <img class="det-logo" id="detLogo" alt="" hidden referrerpolicy="no-referrer">
   <div class="det-bigtitle" id="detBigTitle" title="${esc(title)}">${esc(title)}</div>
@@ -11779,6 +11772,10 @@ ${(_isCg51Det && d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length&&!(/站
     <div class="det-genres" id="detGenres"></div>
     ${(_isCg51Det && ((d.info&&d.info._cg51Body)||(d.info&&d.info._cg51CarImgs&&d.info._cg51CarImgs.length)))?'<section class="det-cg51-content">'+((d.info&&d.info._cg51Body)?'<div class="det-article-body">'+d.info._cg51Body+'</div>':'')+'</section>':''}
   </div>
+</div>
+<div class="det-bottom-bar" id="detBottomBar">
+  ${(_isCg51Det)?'<div class="cg51-video-zone" id="cg51VideoZone"></div>':''}
+  <span class="cg51-hero-count-bottom" id="cg51HeroCount"></span>
 </div>
 <div class="det-collapse-row">
 <section class="det-collapse det-res">
