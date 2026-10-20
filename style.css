@@ -1954,6 +1954,17 @@ html.nav-mode-top .navrow{
   white-space:nowrap;
 }
 .cg51-ep-btn.active{background:rgba(var(--accent-rgb),.24);border-color:rgba(var(--accent-rgb),.55);color:#fff}
+/* ===== 51吃瓜详情：底部内容卡（帖子介绍文字 + 帖子图片，整体位于播放入口之下）===== */
+.det-cg51-content{
+  margin:2px 18px 18px;padding:14px 16px;
+  border-radius:14px;background:var(--soft);border:1px solid var(--line);
+}
+.det-cg51-content .det-article-body{
+  margin:0;padding:0;border:none;background:transparent;border-radius:0;
+}
+.det-cg51-content .det-article-body:last-child{padding-bottom:0}
+.det-cg51-content .det-cg51-imgs{margin:14px 0 0}
+.det-cg51-content .det-cg51-imgs:first-child{margin-top:0}
 /* ===== 51吃瓜详情：底部帖子图区（正文图统一移此，点击看大图）===== */
 .det-cg51-imgs{margin:0 18px 22px}
 .det-cg51-imgs-head{
