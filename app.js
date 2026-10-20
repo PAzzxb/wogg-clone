@@ -11722,7 +11722,7 @@ async function _loadDetailContent(v){
     const _isCg51Det=!!(v&&(v.siteId==='cg51'||v._chigua51Id));
 const _isCg57Det=!!(v&&(v.siteId==='cg57'||v._chigua57Id));
 const _isCgAnyDet=_isCg51Det||_isCg57Det;
-    heroCta.innerHTML = (!_isCg51Det && d.pans.length)?`<button class="det-play-btn" id="detPlayBtn" aria-label="立即播放">
+    heroCta.innerHTML = (d.pans.length)?`<button class="det-play-btn" id="detPlayBtn" aria-label="立即播放">
       <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
     </button>`:'';
 
