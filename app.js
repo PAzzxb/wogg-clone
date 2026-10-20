@@ -7632,7 +7632,7 @@ function _initCg51HeroCarousel(entries){
     _ctl.id='cg51HeroCtl';
     _ctl.className='cg51-hero-ctl';
     hero.appendChild(_ctl);
-    // 左右箭头：移到中间竖排
+    // 左右箭头：居中竖排
     let _prev=document.getElementById('cg51HeroPrev'),_next=document.getElementById('cg51HeroNext');
     if(_prev)_prev.remove();if(_next)_next.remove();
     _prev=document.createElement('button');
@@ -11720,6 +11720,8 @@ async function _loadDetailContent(v){
     // 有自带网盘链接才显示播放钮；绿色需健康检测确认有效后再加
     // 51吃瓜：播放入口统一放底部视频区（#cg51VideoZone），hero 只留主封面
     const _isCg51Det=!!(v&&(v.siteId==='cg51'||v._chigua51Id));
+const _isCg57Det=!!(v&&(v.siteId==='cg57'||v._chigua57Id));
+const _isCgAnyDet=_isCg51Det||_isCg57Det;
     heroCta.innerHTML = (!_isCg51Det && d.pans.length)?`<button class="det-play-btn" id="detPlayBtn" aria-label="立即播放">
       <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
     </button>`:'';

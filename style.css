@@ -1786,6 +1786,7 @@ html.nav-mode-top .navrow{
 #sheet.cg51-det.landscape-mode .det-hero{
   aspect-ratio:16/9 !important;max-height:none !important;min-height:100vh !important;
   background:transparent !important;
+  overflow:visible !important;
 }
 #sheet.cg51-det .det-hero-bg{
   background-position:center center;
@@ -2047,7 +2048,7 @@ html.nav-mode-top .navrow{
   position:absolute;inset:0;z-index:4;
   pointer-events:none;
 }
-/* 左右箭头：移到中间竖排 */
+/* 左右箭头：居中竖排 */
 .cg51-hero-arrow{
   position:absolute;left:50%;z-index:5;
   width:40px;height:40px;border-radius:50%;
@@ -2064,6 +2065,21 @@ html.nav-mode-top .navrow{
 .cg51-hero-arrow:active{transform:scale(.95)}
 .cg51-hero-arrow.prev{top:calc(50% - 56px);transform:translateX(-50%)}
 .cg51-hero-arrow.next{top:calc(50% + 56px);transform:translateX(-50%)}
+/* 51吃瓜：hero 区域允许 overflow:visible，箭头不被裁切 */
+#sheet.cg51-det.landscape-mode .det-hero{
+  overflow:visible !important;
+}
+/* 51吃瓜：底部栏计数器（在简介下方，播放按钮旁边） */
+.det-bottom-bar{
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  margin:8px 0 4px;padding:0 14px;
+}
+.cg51-video-zone{flex:none}
+.cg51-hero-count-bottom{
+  font-size:13px;color:rgba(255,255,255,.85);
+  background:rgba(0,0,0,.35);padding:3px 10px;border-radius:12px;
+  font-weight:600;
+}
 /* 51吃瓜详情页：所有框改透明 */
 #sheet.cg51-det .det-title-wrap,
 #sheet.cg51-det .det-intro-collapse,
@@ -2415,27 +2431,21 @@ html.nav-mode-top .navrow{
 
 /* action buttons — 居中 + 与首页主按钮统一质感 */
 .det-actions{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 18px;align-items:center;justify-content:center}
-.det-play-btn{
-  position:relative;overflow:visible;
-  display:inline-flex;align-items:center;justify-content:center;
-  color:#1a1a1a;
-  cursor:pointer;
-  width:62px;height:62px;padding:0;
-  border-radius:50%;
-  background:rgba(255,255,255,.94);
-  border:none;
-  box-shadow:0 6px 24px rgba(0,0,0,.28);
-  /* 不在此过渡 opacity，避免与 .det-hero-cta 显隐叠闪 */
-  transition:transform .2s var(--ease-press), background .2s, box-shadow .2s;
+/* 51吃瓜：播放按钮去掉白色圆框，只保留透明背景 + 图标 */
+#sheet.cg51-det .det-play-btn,
+#sheet.cg51-det .cg51-play-btn{
+  background:transparent !important;
+  border:none !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  width:44px;height:44px;
+  color:rgba(255,255,255,.9);
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.5));
 }
-.det-play-btn svg{width:22px;height:22px;margin-left:3px;fill:currentColor}
-.det-play-btn::before{display:none !important;content:none !important;animation:none !important}
-.det-play-btn.valid{ color:var(--green); }
-.det-hero-cta .det-play-btn:active{
-  transform:scale(.94);
-  background:rgba(255,255,255,.98);
-  box-shadow:0 3px 14px rgba(0,0,0,.22);
-}
+#sheet.cg51-det .det-play-btn svg,
+#sheet.cg51-det .cg51-play-btn svg{width:28px;height:28px;margin-left:0;fill:currentColor}
+#sheet.cg51-det .det-play-btn:active,
+#sheet.cg51-det .cg51-play-btn:active{transform:scale(.9);filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
 
 
 /* 瓜子首页多板块（对齐官网） */
