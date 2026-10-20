@@ -142,7 +142,15 @@ function _doCloseSheet() {
   _currentDetailItem=null;   // 作废任何仍在 await 的 _loadDetailContent
   _initCg51HeroCarousel._inited=false;   // 下次打开详情允许重新初始化
   if(_cg51HeroRot.timer){clearInterval(_cg51HeroRot.timer);_cg51HeroRot.timer=null;}
-  sheet.classList.remove('cg51-det');   // 关闭详情时移除透明标记
+  sheet.classList.remove('cg51-det','cg57-det');   // 关闭详情时移除透明标记（含 57吃瓜）
+  // 关键：真正删掉挂在 #detHero 上的轮播控件（左右箭头）。
+  // #detHero 是跨详情复用的「持久节点」（静态存在于 index.html），此前关闭时只把
+  // _initCg51HeroCarousel._inited 重置、没删 DOM，导致看过一次吃瓜详情后箭头就残留在
+  // #detHero 里，再打开玩偶等任何站点详情都会跟着显示「左右切换」按钮（用户看到的全站都有）。
+  try{ document.body.classList.remove('cg51-det','cg57-det'); }catch(e){}   // body 上海报层标记同步清除（contain/去遮罩依赖它）
+  try{ const _hc=document.getElementById('cg51HeroCtl'); if(_hc) _hc.remove(); }catch(e){}
+  try{ const _hp=document.getElementById('cg51HeroPrev'); if(_hp) _hp.remove(); }catch(e){}
+  try{ const _hn=document.getElementById('cg51HeroNext'); if(_hn) _hn.remove(); }catch(e){}
   if (!sheet.classList.contains('active')) return;
   sheet.classList.remove('landscape-mode','res-open','sheet-anim-done');
   try{ document.querySelectorAll('body > .det-collapse-row').forEach(function(el){ el.remove(); }); }catch(e){}
@@ -10476,6 +10484,26 @@ async function chigua57Detail(v){
         if(v){ v.title=meta.series; v.name=meta.series; }
       }catch(e){}
     }
+    // 57吃瓜：轮播图集与 51吃瓜一致——封面（poster/og:image）打头 + 正文配图去重追加。
+    // 竖长帖子封面/配图走 contain 完整显示（cover 会裁成半截），多图可左右切换浏览。
+    try{
+      const _57imgs=[];
+      const _re=/https?:\/\/[a-z0-9.]*chigua\.media\/media\/[^"')\s]+\.(?:jpg|jpeg|png|webp)/gi;
+      let _mm;
+      while((_mm=_re.exec(html))){
+        const _u=_mm[0];
+        if(/logo|favicon/i.test(_u)) continue;
+        if(_57imgs.indexOf(_u)<0) _57imgs.push(_u);
+      }
+      const _car=[];
+      const _cov=info.pic||(v&&v.pic)||'';
+      if(_cov) _car.push(_cov);                 // info.pic 已在上文经 chigua57GateUrl 处理
+      _57imgs.forEach(function(_u){
+        const _g=chigua57GateUrl(_u,'image/*,*/*')||_u;
+        if(_car.indexOf(_g)<0) _car.push(_g);
+      });
+      info._cg57CarImgs=_car;
+    }catch(e){}
   }catch(e){
     console&&console.warn&&console.warn('[chigua57]',e&&e.message);
   }
@@ -11467,6 +11495,15 @@ function openDetail(v){
 
   // 51吃瓜详情：加 cg51-det 标记，让 CSS 把所有框改透明
   sheet.classList.toggle('cg51-det', !!(v&&(v.siteId==='cg51'||v._chigua51Id)));
+  // 57吃瓜详情：加 cg57-det 标记，复用吃瓜海报 contain/轮播/浏览态样式
+  sheet.classList.toggle('cg57-det', !!(v&&(v.siteId==='cg57'||v._chigua57Id)));
+  // 关键：海报层（#detHeroBg / .det-hero-bg-img / .det-hero-scrim）挂在 body 下，
+  // 与 #sheet 是「兄弟节点」而非后代，所以 contain 完整显示 / 去遮罩等规则
+  // 必须在 body 上也打同名标记才能命中（仅打在 #sheet 上永远无效）。
+  try{
+    document.body.classList.toggle('cg51-det', !!(v&&(v.siteId==='cg51'||v._chigua51Id)));
+    document.body.classList.toggle('cg57-det', !!(v&&(v.siteId==='cg57'||v._chigua57Id)));
+  }catch(e){}
 
   sheet.classList.add('active');
   sheet.classList.remove('sheet-anim-done');
@@ -11693,6 +11730,17 @@ async function _loadDetailContent(v){
         }));
         if(_currentDetailItem!==v)return;
         const list=hydrated.filter(Boolean);
+        if(!list.length) return;
+        setBackdrops(list);
+        _initCg51HeroCarousel(list);
+        return;
+      }
+      // 57吃瓜：同样有「封面 + 正文配图」的多图轮播（_cg57CarImgs），与 51吃瓜一致支持左右手动切换。
+      // 图片已过 chigua57GateUrl 代理（和封面同源同机制），可直接作 backgroundImage，
+      // 无需像 51吃瓜那样因 CDN 返 binary/octet-stream 而做 fetch+Blob 水合。
+      if((v.siteId==='cg57'||v._chigua57Id) && d.info && d.info._cg57CarImgs && d.info._cg57CarImgs.length){
+        const list=d.info._cg57CarImgs.filter(Boolean);
+        if(_currentDetailItem!==v)return;
         if(!list.length) return;
         setBackdrops(list);
         _initCg51HeroCarousel(list);

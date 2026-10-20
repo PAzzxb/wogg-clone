@@ -1794,8 +1794,12 @@ html.nav-mode-top .navrow{
     rgba(13,17,23,.28) 82%,
     rgba(13,17,23,.5) 100%);
 }
-/* 51吃瓜：全屏海报适配手机，去掉渐变遮罩让图片全屏清晰显示 */
-#sheet.cg51-det .det-hero-scrim{display:none!important}
+/* 吃瓜类：全屏海报适配手机，去掉渐变遮罩让图片全屏清晰显示。
+   注意：#detHeroBg / .det-hero-bg-img / .det-hero-scrim 挂在 body 下，
+   与 #sheet 是「兄弟节点」而非后代，故这些规则必须锚在 body.<标记> 上才会命中
+   （此前写成 #sheet.cg51-det .det-hero-bg-img 是永远无法命中的无效规则） */
+body.cg51-det .det-hero-scrim,
+body.cg57-det .det-hero-scrim{display:none!important}
 /* 51吃瓜：去掉 hero 的 100vh 强制撑满（旧规则会把 hero 钉成整屏，
    把标题/简介/播放钮/计数器挤出首屏）；hero 尺寸交回 landscape-mode 的
    flex:1 1 auto，海报仍由全屏 detHeroBg 层呈现，切换轮播不受影响 */
@@ -1826,12 +1830,14 @@ html.nav-mode-top .navrow{
 #sheet.cg51-det.landscape-mode .det-hero{
   overflow:visible !important;
 }
-#sheet.cg51-det .det-hero-bg{
+body.cg51-det .det-hero-bg,
+body.cg57-det .det-hero-bg{
   background-position:center center;
 }
-/* 51吃瓜：轮播图完整显示——封面/正文配图多为竖长图，cover 会被裁成半截；
-   contain 整图等比可见，暗色底填充留白（容器 background-color 兜底） */
-#sheet.cg51-det .det-hero-bg-img{
+/* 吃瓜类：轮播图完整显示——封面/正文配图多为竖长图，cover 会被裁成半截；
+   contain 整图等比可见，暗色底填充留白（容器 background-color 兜底）。同时覆盖 51/57吃瓜 */
+body.cg51-det .det-hero-bg-img,
+body.cg57-det .det-hero-bg-img{
   background-size:contain !important;
   background-repeat:no-repeat !important;
   background-position:center center !important;
@@ -2056,7 +2062,12 @@ html.nav-mode-top .navrow{
 #sheet.cg51-det.cg51-poster-browse .det-title-wrap,
 #sheet.cg51-det.cg51-poster-browse .det-intro-collapse,
 #sheet.cg51-det.cg51-poster-browse .cg51-video-zone,
-#sheet.cg51-det.cg51-poster-browse .det-hero-cta{
+#sheet.cg51-det.cg51-poster-browse .det-hero-cta,
+/* 57吃瓜：同样进入浏览态时隐藏标题/简介/播放区 */
+#sheet.cg57-det.cg51-poster-browse .det-title-wrap,
+#sheet.cg57-det.cg51-poster-browse .det-intro-collapse,
+#sheet.cg57-det.cg51-poster-browse .cg51-video-zone,
+#sheet.cg57-det.cg51-poster-browse .det-hero-cta{
   opacity:0;
   transform:translateY(14px);
   pointer-events:none;
@@ -2120,8 +2131,9 @@ html.nav-mode-top .navrow{
 .cg51-hero-arrow:active{transform:translateY(-50%) scale(.95)}
 .cg51-hero-arrow.prev{left:14px}
 .cg51-hero-arrow.next{right:14px}
-/* 51吃瓜：hero 区域允许 overflow:visible，箭头不被裁切 */
-#sheet.cg51-det.landscape-mode .det-hero{
+/* 吃瓜类：hero 区域允许 overflow:visible，轮播箭头不被裁切（含 57吃瓜） */
+#sheet.cg51-det.landscape-mode .det-hero,
+#sheet.cg57-det.landscape-mode .det-hero{
   overflow:visible !important;
 }
 /* 51吃瓜：底部栏计数器（在简介下方，播放按钮旁边） */
