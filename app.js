@@ -2145,25 +2145,7 @@ function renderChips(){
     return `<button class="chip ${(activeCat===c[0]||grp===c[0])?'active':''}${hasSub?' has-sub':''}" data-id="${c[0]}" data-grp="${hasSub?c[0]:''}">${c[1]}</button>`;
   }).join('');
   chips.querySelectorAll('.chip').forEach(b=>{
-    b.onclick=(e)=>{
-      e.stopPropagation();
-      const hasSub=b.classList.contains('has-sub');
-      const g=b.dataset.grp;
-        if(hasSub && s.catGroups && s.catGroups[g] && s.catGroups[g].length){
-          // 有二级分类：切到新分类自动弹出二级下拉；点当前已选分类则一键收起/展开
-          if(b.classList.contains('active')){
-            const _p=$('#catDropPanel');
-            if(_p && !_p.hidden && _p.classList.contains('show')) closeDropPanel();
-            else openDropPanel();
-          }else{
-            activateCategory(b.dataset.id);   // 切换分类（同时刷新下拉内容）
-            openDropPanel();                 // 自动弹出二级下拉，免去每次手动下拉
-          }
-        }else{
-          activateCategory(b.dataset.id);
-          closeDropPanel();
-        }
-    };
+    b.onclick=(e)=> onChipClick(e, b);
   });
   // 父分组 chip：若当前选中的分类属于它的二级 → 加 drop-open 高亮三角
   const parentGrp=catGroupOf(s,activeCat);
@@ -2180,18 +2162,7 @@ function renderChips(){
       return `<button class="chip ${(activeCat===c[0]||g2===c[0])?'active':''}${hasSub?' has-sub':''}" data-id="${c[0]}" data-grp="${hasSub?c[0]:''}">${c[1]}</button>`;
     }).join('');
     chips.querySelectorAll('.chip').forEach(b=>{
-      b.onclick=(e)=>{
-        e.stopPropagation();
-        const hasSub=b.classList.contains('has-sub');
-        const g=b.dataset.grp;
-        if(hasSub && s.catGroups && s.catGroups[g] && s.catGroups[g].length){
-          if(!b.classList.contains('active')) activateCategory(b.dataset.id);
-          toggleDropPanel();
-        }else{
-          activateCategory(b.dataset.id);
-          closeDropPanel();
-        }
-      };
+      b.onclick=(e)=> onChipClick(e, b);
     });
     act=chips.querySelector('.chip.active');
   }
@@ -2203,72 +2174,73 @@ function renderChips(){
 function renderSubChips(s,grp){
   const row=$('#chipsSub'); if(!row)return;
   const items=(s&&s.catGroups&&grp)?(s.catGroups[grp]||[]):[];
-  if(!items.length){ row.hidden=true; row.innerHTML=''; return; }
-  // 二级分类已收进下拉面板：横滑行始终隐藏，避免与下拉面板重复
-  row.hidden=true; row.innerHTML='';
-  const panel=$('#catDropPanel'); if(!panel) return;
+  if(!items.length){ row.hidden=true; row.innerHTML=''; stopSubRowTimer(); return; }
   const cur=activeCat;
-  panel.innerHTML=`<div class="drop-card">
-    <span class="drop-title">${grp||''}</span>
-    ${items.map(c=>`<button type="button" class="drop-chip ${cur===c[0]?'active':''}" data-id="${c[0]}" data-grp="${grp}">${c[1]}</button>`).join('')}
-  </div>`;
-  panel.querySelectorAll('.drop-chip').forEach(b=>{
+  // 二级分类渲染进内联滑动行（#chipsSub），取代原下拉面板
+  row.innerHTML=items.map(c=>`<button type="button" class="chip ${cur===c[0]?'active':''}" data-id="${c[0]}" data-grp="${grp}">${c[1]}</button>`).join('');
+  row.querySelectorAll('.chip').forEach(b=>{
     b.onclick=(e)=>{
       e.stopPropagation();
       activateCategory(b.dataset.id);
-      closeDropPanel();
+      hideSubRow();                          // 选中二级后立即收起滑动行
     };
   });
-  positionDropPanel();
 }
-// 下拉面板位置：贴在一级 chips 行下方（不随页面滚动 → fixed）
-function positionDropPanel(){
-  const panel=$('#catDropPanel'); const navrow=$('#navMain');
-  if(!panel||!navrow) return;
-  const r=navrow.getBoundingClientRect();
-  const isTop=document.documentElement.classList.contains('nav-mode-top');
-  const navH=isTop?r.height:r.height;
-  document.documentElement.style.setProperty('--nav-h', navH+'px');
-  panel.style.top=(r.bottom)+'px';
+// ===== 二级分类：内联滑动行（取代原下拉面板）=====
+// 点带二级的顶部分类 → 二级在下方一行横向滑出，停留数秒后自动收起；
+// 点当前已选分类可手动收起/展开，选中二级或点空白处即收起。
+let _subRowTimer=null;
+function onChipClick(e, b){
+  e.stopPropagation();
+  const sv=site();
+  const hasSub=b.classList.contains('has-sub');
+  const g=b.dataset.grp;
+  if(hasSub && sv.catGroups && sv.catGroups[g] && sv.catGroups[g].length){
+    if(b.classList.contains('active')){
+      toggleSubRow();                       // 点当前已选分类：切换显隐
+    }else{
+      activateCategory(b.dataset.id);       // 切换分类（renderChips 会刷新二级内容）
+      showSubRow();                         // 滑出二级行 + 启动延时收起
+    }
+  }else{
+    activateCategory(b.dataset.id);
+    hideSubRow();
+  }
 }
-function _catDropOutside(e){
-  const panel=$('#catDropPanel');
-  if(!panel) return;
-  if(panel.contains(e.target)) return;
+function showSubRow(){
+  const row=$('#chipsSub'); if(!row) return;
+  row.hidden=false;
+  void row.offsetWidth;                     // 强制 reflow，确保过渡生效
+  row.classList.add('show');
+  startSubRowTimer();
+  document.removeEventListener('click', _subRowOutside, true);
+  setTimeout(()=>document.addEventListener('click', _subRowOutside, true), 0);
+}
+function hideSubRow(){
+  const row=$('#chipsSub'); if(!row) return;
+  stopSubRowTimer();
+  document.removeEventListener('click', _subRowOutside, true);
+  row.classList.remove('show');
+  setTimeout(()=>{ if(row && !row.classList.contains('show')) row.hidden=true; }, 320);
+}
+function toggleSubRow(){
+  const row=$('#chipsSub'); if(!row) return;
+  if(row.classList.contains('show') && !row.hidden) hideSubRow();
+  else showSubRow();
+}
+function startSubRowTimer(){
+  stopSubRowTimer();
+  _subRowTimer=setTimeout(hideSubRow, 3500);  // 滑出后延时收起
+}
+function stopSubRowTimer(){ if(_subRowTimer){ clearTimeout(_subRowTimer); _subRowTimer=null; } }
+function _subRowOutside(e){
+  const row=$('#chipsSub');
   const nav=document.getElementById('navMain');
+  if(!row || row.hidden || !row.classList.contains('show')) return;
+  if(row.contains(e.target)) return;
   if(nav && nav.contains(e.target)) return;
-  closeDropPanel();
+  hideSubRow();
 }
-function openDropPanel(){
-  const panel=$('#catDropPanel'); if(!panel) return;
-  positionDropPanel();
-  panel.hidden=false;
-  requestAnimationFrame(()=>panel.classList.add('show'));
-  document.removeEventListener('click', _catDropOutside, true);
-  setTimeout(()=>document.addEventListener('click', _catDropOutside, true), 0);
-}
-function closeDropPanel(){
-  const panel=$('#catDropPanel'); if(!panel) return;
-  document.removeEventListener('click', _catDropOutside, true);
-  panel.classList.remove('show');
-  setTimeout(()=>{ panel.hidden=true; }, 180);
-}
-function toggleDropPanel(){
-  const panel=$('#catDropPanel');
-  if(!panel||panel.hidden) openDropPanel();
-  else closeDropPanel();
-}
-// 点击外部收起下拉面板
-(function(){
-  document.addEventListener('click',(e)=>{
-    const panel=$('#catDropPanel');
-    if(!panel||panel.hidden||!panel.classList.contains('show')) return;
-    if(panel.contains(e.target)) return;
-    const chip=e.target.closest && e.target.closest('.chip.has-sub');
-    if(chip) return;
-    closeDropPanel();
-  },true);
-})();
 // 切换分类（点击胶囊 / 左右滑动都走这里）。slideDir：'l' 右滑出现下一类，'r' 左滑出现上一类
 function activateCategory(id,slideDir){
   if(id==null)return;

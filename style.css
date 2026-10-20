@@ -1367,6 +1367,19 @@ html.nav-mode-top .nav-filter .chip.active{
   overscroll-behavior-y:none;
   touch-action:pan-x;
   flex-shrink:0 !important;
+  /* 内联二级行：默认收起（配合 [hidden] 完全隐藏），.show 时滑出 */
+  max-height:0;
+  opacity:0;
+  transform:translateY(-8px);
+  pointer-events:none;
+  transition:max-height .28s ease, opacity .22s ease, transform .22s ease;
+}
+/* 滑出态：单行二级高度足够，横向仍可滚动 */
+.subchips.show{
+  max-height:84px;
+  opacity:1;
+  transform:none;
+  pointer-events:auto;
 }
 .subchips::-webkit-scrollbar{display:none}
 .subchips[hidden]{display:none !important}
