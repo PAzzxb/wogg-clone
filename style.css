@@ -1796,14 +1796,9 @@ html.nav-mode-top .navrow{
 }
 /* 51吃瓜：全屏海报适配手机，去掉渐变遮罩让图片全屏清晰显示 */
 #sheet.cg51-det .det-hero-scrim{display:none!important}
-/* 51吃瓜：海报容器直接撑满视口（手机竖屏也全屏），不受 2/3 aspect-ratio 限制 */
-#sheet.cg51-det .det-hero{
-  min-height:100vh !important;
-  height:100vh !important;
-  aspect-ratio:auto !important;max-height:none !important;
-  background:transparent !important;
-  overflow:visible !important;
-}
+/* 51吃瓜：去掉 hero 的 100vh 强制撑满（旧规则会把 hero 钉成整屏，
+   把标题/简介/播放钮/计数器挤出首屏）；hero 尺寸交回 landscape-mode 的
+   flex:1 1 auto，海报仍由全屏 detHeroBg 层呈现，切换轮播不受影响 */
 /* 非 cg51 站点：播放按钮在全屏海报上方可见（det-hero-bg z-index:38 遮住了 z-index:2 的 cta） */
 #sheet:not(.cg51-det) .det-hero-cta{
   z-index:39 !important;
@@ -1814,44 +1809,20 @@ html.nav-mode-top .navrow{
   flex-wrap:wrap !important;
   gap:8px 14px;
 }
-/* 51吃瓜：sheet 背景透明，让全屏海报透出来 */
+/* 51吃瓜：sheet 背景透明，让全屏海报透出来；布局回归 wogg 默认沉浸式——
+   不再用「block + 100vh sticky hero」把标题/简介/播放钮/计数器挤到屏幕外，
+   改走 landscape-mode 的 flex 纵向布局：hero 撑满上方（轮播/箭头照常工作），
+   标题/简介/播放钮/计数器作为 panel 沉在首屏底部，打开即全可见、互不重叠 */
 #sheet.cg51-det{
   background:transparent !important;
-  display:block !important;
-  overflow-y:auto !important;
-  height:100vh !important;
-  max-height:100vh !important;
-}
-/* 51吃瓜：海报容器占满视口，固定在顶部不随滚动移开 */
-#sheet.cg51-det .det-hero{
-  position:sticky !important;
-  top:0 !important;
-  min-height:100vh !important;
-  height:100vh !important;
-  aspect-ratio:auto !important;max-height:none !important;
-  background:transparent !important;
-  overflow:visible !important;
-  z-index:1;
-}
-/* 51吃瓜：panel 内容在海报下方滚动 */
-#sheet.cg51-det .panel{
-  margin-top:0 !important;
-  padding:0 18px calc(var(--safe-bottom) + 56px) !important;
 }
 /* 51吃瓜：吸顶导航隐藏，全屏海报已覆盖顶部 */
 #sheet.cg51-det .det-topbar{display:none !important}
-/* 51吃瓜：覆盖 landscape-mode 的 flex 布局，让海报直接撑满 */
-#sheet.cg51-det.landscape-mode{
-  display:block !important;
-  flex-direction:initial !important;
-  height:100vh !important;
-  max-height:100vh !important;
-}
+/* 51吃瓜：保持 landscape-mode 的 flex 纵向布局（不覆写为 block/绝对高度），
+   海报仍由全屏 detHeroBg 层承担（切换轮播不受影响）；
+   仅允许 hero 内部轮播箭头溢出不被裁切 */
 #sheet.cg51-det.landscape-mode .det-hero{
-  flex:none !important;
-  height:100vh !important;
-  min-height:100vh !important;
-  max-height:none !important;
+  overflow:visible !important;
 }
 #sheet.cg51-det .det-hero-bg{
   background-position:center center;
