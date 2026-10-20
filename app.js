@@ -2310,6 +2310,10 @@ function card(v,i){
           // data-cg57-src 保留原地址，供 fm 就绪后二次代理
           return '<img loading="lazy" referrerpolicy="origin" data-cg57-src="'+esc(v.pic)+'" src="'+esc(src)+'" onload="window._posterOk&&window._posterOk(this)" onerror="window._posterFail&&window._posterFail(this)">';
         }
+        if(v.siteId==='cg51'||v._chigua51Id){
+          // 51吃瓜封面 CDN 返回 binary/octet-stream，<img> 直连拒显 → data-cg51-src 走 fetch+Blob 水合
+          return '<img loading="lazy" referrerpolicy="no-referrer" data-cg51-src="'+esc(v.pic)+'" onload="window._posterOk&&window._posterOk(this)" onerror="window._posterFail&&window._posterFail(this)">';
+        }
         return '<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(v.pic)+'" onload="window._posterOk&&window._posterOk(this)" onerror="window._posterFail&&window._posterFail(this)">';
       }
       return '<div class="noimg">溜溜</div>';
@@ -2538,6 +2542,7 @@ function _infLoad(){
         }
       }catch(eHg){}
       try{ if(typeof chigua57HydrateCovers==='function') setTimeout(function(){ chigua57HydrateCovers(content); }, 40); }catch(eH){}
+      try{ if(typeof chigua51HydrateAll==='function') setTimeout(function(){ chigua51HydrateAll(content); }, 45); }catch(eH3){}
     }else{
       // 列表式站源：旧实现只往 .grid 追加，列表视图其实一条都不会出现，这里整体重渲染保证序号连续
       const lv=content.querySelector('.list-view');
@@ -2668,6 +2673,7 @@ function renderGrid(list,pager,aggSearch){
     :'<div class="empty">暂无内容<br><span style="opacity:.65;font-size:12px">换个分类或站源试试</span></div>';
   _aggSearchRender=false;   // 只在本次同步渲染期间生效；无限加载追加的分类卡片同样不带站源角标
   try{ if(typeof chigua57HydrateCovers==='function') setTimeout(()=>chigua57HydrateCovers(content), 30); }catch(eH){}
+  try{ if(typeof chigua51HydrateAll==='function') setTimeout(()=>chigua51HydrateAll(content), 40); }catch(eH2){}
   const g0=content.querySelector('.grid');
   if(isSlide){
     if(g0)g0.addEventListener('animationend',()=>g0.classList.remove('slide-l','slide-r'),{once:true});
@@ -10373,6 +10379,91 @@ const CG51_NOTICE_RE=/(招募|投稿|稿费|征稿|致歉|道歉|致歉信|公�
 function chigua51IsNotice(title){
   return CG51_NOTICE_RE.test(String(title||''));
 }
+/* 51吃瓜图片水合：封面/正文图 CDN 返回 binary/octet-stream，Chromium <img> 与 background 均拒显。
+ * 方案：fetch → arrayBuffer → 魔数判真实 MIME → new Blob → objectURL → img.src。
+ * 列表封面与详情底部图区通用；objectURL 按 URL 缓存去重；视口内立即水合，其余 IO 懒加载，并发 4。 */
+const _cg51ObjCache={};
+function chigua51GuessMime(buf){
+  try{
+    const u=new Uint8Array(buf);
+    if(u[0]===0xFF&&u[1]===0xD8&&u[2]===0xFF) return 'image/jpeg';
+    if(u[0]===0x89&&u[1]===0x50&&u[2]===0x4E&&u[3]===0x47) return 'image/png';
+    if(u[0]===0x47&&u[1]===0x49&&u[2]===0x46&&u[3]===0x38) return 'image/gif';
+    if(u[0]===0x52&&u[1]===0x49&&u[2]===0x46&&u[3]===0x46&&u[8]===0x57&&u[9]===0x45&&u[10]===0x42&&u[11]===0x50) return 'image/webp';
+  }catch(e){}
+  return 'image/jpeg';
+}
+/* 单 URL 水合为 blob: 地址（按 URL 缓存去重）；已是 blob:/data: 直接返回 */
+async function chigua51HydrateUrl(raw){
+  if(!raw) return '';
+  if(/^blob:|^data:/i.test(raw)) return raw;
+  let bu=_cg51ObjCache[raw];
+  if(bu) return bu;
+  const r=await fetch(raw,{signal:AbortSignal.timeout(15000)});
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  const buf=await r.arrayBuffer();
+  bu=URL.createObjectURL(new Blob([buf],{type:chigua51GuessMime(buf)}));
+  _cg51ObjCache[raw]=bu;
+  return bu;
+}
+async function chigua51HydrateImg(img){
+  if(!img||img.dataset.cg51Done==='1') return;
+  const raw=img.getAttribute('data-cg51-src');
+  if(!raw) return;
+  img.dataset.cg51Done='1';
+  try{
+    const bu=await chigua51HydrateUrl(raw);
+    img.src=bu;
+    img.dataset.failed='';
+    img.style.opacity='';
+    const poster=img.closest('.poster');
+    if(poster){ const ph=poster.querySelector('.noimg'); if(ph) ph.remove(); poster.dataset.fb=''; }
+  }catch(e){
+    try{ if(typeof window._posterFail==='function') window._posterFail(img); }catch(e2){}
+  }
+}
+/* force=true：全部立即入队（详情页帖子图是用户点开就要看的内容，不做懒加载）；
+ * 列表网格仍走视口内立即 + IO 懒加载（卡量可能上百） */
+function chigua51HydrateAll(root, force){
+  try{
+    root=root||document;
+    const imgs=[...root.querySelectorAll('img[data-cg51-src]')].filter(im=>im.dataset.cg51Done!=='1');
+    if(!imgs.length) return;
+    const vh=(window.innerHeight||document.documentElement.clientHeight||800);
+    const queue=[];
+    for(const img of imgs){
+      let r=null; try{ r=img.getBoundingClientRect(); }catch(e){}
+      if(force || !r || (r.top<vh+400 && r.bottom>-200)) queue.push(img);
+      else if(window.IntersectionObserver){
+        const io=new IntersectionObserver(function(es,ob){
+          for(const en of es){ if(en.isIntersecting){ ob.disconnect(); chigua51HydrateImg(en.target); } }
+        },{rootMargin:'400px'});
+        io.observe(img);
+      } else queue.push(img);
+    }
+    (function run(){
+      const CONC=4;
+      for(let i=0;i<CONC && queue.length;i++){
+        chigua51HydrateImg(queue.shift()).then(run,run);
+      }
+    })();
+  }catch(e){}
+}
+/* 底部图区点击看大图（轻量 lightbox） */
+function chigua51Lightbox(url){
+  try{
+    let ov=document.getElementById('cg51Lightbox');
+    if(!ov){
+      ov=document.createElement('div'); ov.id='cg51Lightbox';
+      ov.innerHTML='<img alt="">';
+      ov.addEventListener('click',function(){ ov.classList.remove('show'); });
+      document.body.appendChild(ov);
+    }
+    const im=ov.querySelector('img');
+    im.onload=function(){ ov.classList.add('show'); };
+    im.src=url;
+  }catch(e){}
+}
 function chigua51StripTags(h){
   return String(h||'')
     .replace(/<script[\s\S]*?<\/script>/gi,'')
@@ -10524,10 +10615,7 @@ function chigua51CleanBody(html, base){
     let inner=m[2]||'';
     inner=inner.replace(/<a\b[^>]*>[\s\S]*?<\/a\s*>/gi,'');                 // 全部外链（广告 + 站内导航）
     inner=inner.replace(/<img\b(?![^>]*data-xkrkllgl)[^>]*>/gi,'');         // 先删非懒加载图（banner/主题 UI）
-    inner=inner.replace(/<img\b[^>]*data-xkrkllgl="([^"]+)"[^>]*>/gi,function(mm,u){ // 再把真图转直链
-      const url=chigua51SafeUrl(u, base);
-      return url?('<img src="'+url+'" loading="lazy" referrerpolicy="no-referrer">'):'';
-    });
+    inner=inner.replace(/<img\b[^>]*data-xkrkllgl="([^"]+)"[^>]*>/gi,'');   // 真图统一抽出至底部图区，段落只留文字
     inner=inner.replace(/<(script|style|iframe|object|embed|form|input|button|video|source|audio)\b[\s\S]*?<\/\1\s*>/gi,'')
                .replace(/<\/?(script|style|iframe|object|embed|form|input|button|video|source|audio)\b[^>]*>/gi,'');
     inner=inner.replace(/<\/?(div|span|font|section|figure|figcaption|table|thead|tbody|tr|td|center|small|label|select|option|textarea|dl|dt|dd)\b[^>]*>/gi,'');
@@ -10539,6 +10627,17 @@ function chigua51CleanBody(html, base){
     outHtml+='<'+tag+'>'+inner+'</'+tag+'>';
   }
   return outHtml;
+}
+/* 提取详情页正文全部真图 URL（data-xkrkllgl 为本站真图唯一特征），供底部图区网格展示 */
+function chigua51ExtractBodyImgs(html, base){
+  const out=[]; const seen=new Set();
+  const re=/<img\b[^>]*data-xkrkllgl="([^"]+)"[^>]*>/gi;
+  let m;
+  while((m=re.exec(String(html||'')))){
+    const url=chigua51SafeUrl(m[1], base);
+    if(url && !seen.has(url)){ seen.add(url); out.push(url); }
+  }
+  return out;
 }
 async function chigua51Detail(v){
   const s=SITES.find(x=>x.id==='cg51')||{name:'51吃瓜',domains:['https://benefit.cfkhguby.cc']};
@@ -10563,6 +10662,8 @@ async function chigua51Detail(v){
     }
     const og=html.match(/property="og:image"\s+content="([^"]+)"/i);
     if(og&&!info.pic) info.pic=chigua51Abs(base, og[1]);
+    // 帖子全部图片（详情底部图区用；正文段落不再插图）
+    info._cg51Imgs=chigua51ExtractBodyImgs(html, base);
     // 视频 → 分集（一段一集；单段命名「在线」）
     const vids=chigua51ExtractVideos(html);
     const pageUrl=chigua51Abs(base, path);
@@ -11228,6 +11329,11 @@ async function _loadDetailContent(v){
     const sitePic=pickAttachedPoster(v,true)||v.pic||info.pic||'';
     const applyHeroUrl=(url)=>{
       if(!url) return;
+      // 51吃瓜封面 CDN 返回 binary/octet-stream，CSS background 同样拒显 → 先水合为 blob: 再铺
+      if(v&&(v.siteId==='cg51'||v._chigua51Id) && !/^blob:|^data:/i.test(url)){
+        chigua51HydrateUrl(url).then(function(u){ if(_currentDetailItem===v) applyHeroUrl(u); }).catch(function(){});
+        return;
+      }
       const bg=document.getElementById('detHeroBg');
       const A=document.getElementById('detHeroBgA');
       const B=document.getElementById('detHeroBgB');
@@ -11345,7 +11451,9 @@ async function _loadDetailContent(v){
 
     // 海报内部底部：播放按钮
     // 有自带网盘链接才显示播放钮；绿色需健康检测确认有效后再加
-    heroCta.innerHTML = d.pans.length?`<button class="det-play-btn" id="detPlayBtn" aria-label="立即播放">
+    // 51吃瓜：播放入口统一放底部视频区（#cg51VideoZone），hero 只留主封面
+    const _isCg51Det=!!(v&&(v.siteId==='cg51'||v._chigua51Id));
+    heroCta.innerHTML = (!_isCg51Det && d.pans.length)?`<button class="det-play-btn" id="detPlayBtn" aria-label="立即播放">
       <svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
     </button>`:'';
 
@@ -11360,7 +11468,7 @@ async function _loadDetailContent(v){
       return {order, map};
     })();
     const _netdiskHtml=(()=>{
-      if(!(d.pans&&d.pans.length)) return (info&&info._cg51Body)?'<div class="empty">图文帖 · 无视频，正文见上方</div>':'<div class="empty">未提取到网盘链接</div>';
+      if(!(d.pans&&d.pans.length)) return (info&&info._cg51Body)?'<div class="empty">图文帖 · 无视频，帖子图片见下方图区</div>':'<div class="empty">未提取到网盘链接</div>';
       const multi=_panBySite.order.length>1;
       return _panBySite.order.map(sn=>{
         const items=_panBySite.map.get(sn)||[];
@@ -11390,6 +11498,8 @@ async function _loadDetailContent(v){
 </div>
 <div class="det-genres" id="detGenres"></div>
 ${(d.info&&d.info._cg51Body)?'<section class="det-article-body">'+d.info._cg51Body+'</section>':''}
+${(_isCg51Det)?'<div class="cg51-video-zone" id="cg51VideoZone"></div>':''}
+${(d.info&&d.info._cg51Imgs&&d.info._cg51Imgs.length)?'<section class="det-cg51-imgs" id="cg51ImgsSec"><div class="det-cg51-imgs-head">帖子图片<em>'+d.info._cg51Imgs.length+' 张</em></div><div class="cg51-img-grid">'+d.info._cg51Imgs.map(function(u){return '<div class="cg51-img-cell"><img data-cg51-src="'+esc(u)+'" loading="lazy" alt=""></div>';}).join('')+'</div></section>':''}
 <div class="det-collapse-row">
 <section class="det-collapse det-res">
 <div class="det-collapse-head">
@@ -11490,15 +11600,18 @@ ${_netdiskHtml}
       }
     }catch(eRes){}
     function refreshPlayBtn(markValid){
-      const hc=document.querySelector('.det-hero-cta'); if(!hc) return;
+      // 51吃瓜：播放入口在底部视频区（#cg51VideoZone），hero 只留主封面
+      const _isCg51=!!(v&&(v.siteId==='cg51'||v._chigua51Id));
+      const hc=(_isCg51&&document.getElementById('cg51VideoZone'))||document.querySelector('.det-hero-cta'); if(!hc) return;
       const p=_playTarget||(d.pans&&d.pans[0])||null;
       if(!p||!p.url){ hc.innerHTML=''; return; }
-      let b=document.getElementById('detPlayBtn');
+      const btnId=_isCg51?'cg51PlayBtn':'detPlayBtn';
+      let b=document.getElementById(btnId);
       const epHint=(_playTarget&&(_playTarget.name||_playTarget.title))?String(_playTarget.name||_playTarget.title).trim():'';
       const aria=epHint?('续播 '+epHint):'立即播放';
       if(!b){
-        hc.innerHTML='<button class="det-play-btn" id="detPlayBtn" aria-label="'+aria.replace(/"/g,'')+'"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>';
-        b=document.getElementById('detPlayBtn');
+        hc.insertAdjacentHTML('afterbegin','<button class="det-play-btn'+(_isCg51?' cg51-play-btn':'')+'" id="'+btnId+'" aria-label="'+aria.replace(/"/g,'')+'"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg></button>');
+        b=document.getElementById(btnId);
       }else{
         b.setAttribute('aria-label', aria);
       }
@@ -11508,6 +11621,17 @@ ${_netdiskHtml}
       if(markValid===true) b.classList.add('valid');
       else if(markValid===false) b.classList.remove('valid');
       b.onclick=()=>{ if(_playTarget) playPan(_playTarget); else if(d.pans&&d.pans[0]) playPan(d.pans[0]); };
+      // 51吃瓜多集：视频区附「集数」切换钮（单集不显示）
+      if(_isCg51){
+        const eps=(p._allEpisodes||d.pans||[]).filter(e=>e&&e.url);
+        let epBox=document.getElementById('cg51EpList');
+        if(!epBox){ epBox=document.createElement('div'); epBox.id='cg51EpList'; epBox.className='cg51-ep-list'; hc.appendChild(epBox); }
+        if(eps.length>1){
+          const curUrl=_playTarget&&_playTarget.url;
+          epBox.innerHTML=eps.map((e,i)=>'<button type="button" class="cg51-ep-btn'+(e.url===curUrl?' active':'')+'" data-epi="'+i+'">'+esc(e.name||('第'+(i+1)+'集'))+'</button>').join('');
+          epBox.onclick=(ev)=>{ const t=ev.target.closest('.cg51-ep-btn'); if(!t) return; const e=eps[+t.dataset.epi]; if(!e) return; _playTarget=e; refreshPlayBtn(true); playPan(e); };
+        }else{ epBox.innerHTML=''; }
+      }
     }
 function _normPanType(p){
       let type='other';
@@ -11595,6 +11719,17 @@ function _normPanType(p){
     }
     refreshPlayBtn(false);
     ensurePlayReady(null);
+    // 51吃瓜：底部图区/封面水合（CDN 返 binary/octet-stream，需 fetch+Blob 重建 MIME）+ 点图看大图
+    try{
+      if(v&&(v.siteId==='cg51'||v._chigua51Id)){
+        chigua51HydrateAll(panel, true);   // 详情帖子图：立即全部水合（用户点开就是看图的）
+        const imgSec=document.getElementById('cg51ImgsSec');
+        if(imgSec) imgSec.addEventListener('click',function(e){
+          const im=e.target&&e.target.closest&&e.target.closest('img'); if(!im) return;
+          const src=im.src||im.getAttribute('data-cg51-src'); if(src) chigua51Lightbox(src);
+        });
+      }
+    }catch(eHg51){}
 
     // 复制按钮（若有）
     (resBox||panel).querySelectorAll('.copy-btn').forEach(btn=>{
