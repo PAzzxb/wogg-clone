@@ -1344,6 +1344,46 @@ const CORS_PROXIES=[
   u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
   u=>'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u)
 ];
+// ===== CF 绕过代理（可选，默认不启用）=====
+// 玩偶(wogg)等源站在 Cloudflare 五秒盾后：普通 CORS 代理(allorigins/codetabs 是服务端纯 HTTP 代抓)过不了盾。
+// 若你自建了 CF 绕过代理(如 FlareSolverr)，在此填入地址即可让纯浏览器端也能解开 CF、加载这些源。
+// 填法二选一：
+//   A) 简单代理：地址写成 "...?url=" 或含 {url} 占位符的模板，GET 返回 HTML；
+//   B) FlareSolverr：地址以 "/v1" 结尾(如 "https://你的域名:8191/v1")，走 POST JSON 协议。
+// 留空 '' 表示不启用(玩偶仍仅在蜂蜜影视 App 内可用)。
+// 也可不改代码：浏览器控制台执行 localStorage.setItem('wo_cf_proxy','你的地址') 后刷新即可生效。
+let CF_PROXY='';
+try{ const _c=localStorage.getItem('wo_cf_proxy'); if(_c&&_c.trim()) CF_PROXY=_c.trim(); }catch(e){}
+// CF 挑战页识别：命中即说明拿到了 Cloudflare 五秒盾而非真内容
+function _isCfChallenge(t){ return /just a moment|cf-browser|access denied|<title>\s*Just a moment/i.test(t||''); }
+// CF 绕过代理请求：仅当 CF_PROXY 非空时可用，自动识别「简单代理 / FlareSolverr」两种形态
+async function cfReq(url, timeoutSec=20){
+  const _cf=(CF_PROXY||'').trim();
+  if(!_cf) throw new Error('未配置 CF 代理');
+  const to=(timeoutSec||20)*1000;
+  // 形态 B：FlareSolverr（POST JSON，自带无头浏览器真解盾，返回 solution.response）
+  if(/\/v1\/?$/i.test(_cf) || /flaresolverr/i.test(_cf)){
+    const ac=new AbortController();const t=setTimeout(()=>ac.abort(),to);
+    try{
+      const r=await fetch(_cf,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cmd:'request.get',url:url,maxTimeout:to}),signal:ac.signal});
+      if(!r.ok) throw new Error('CF 代理 HTTP '+r.status);
+      const j=await r.json();
+      if(j&&j.solution&&j.solution.response) return j.solution.response;
+      throw new Error('CF 代理未返回内容');
+    }finally{clearTimeout(t)}
+  }
+  // 形态 A：简单代理（GET，直接返回 HTML）
+  let target;
+  if(/\{url\}/i.test(_cf)) target=_cf.replace(/\{url\}/i, encodeURIComponent(url));
+  else if(/\?url=|&url=/i.test(_cf)) target=_cf+encodeURIComponent(url);
+  else { const sep=_cf.includes('?')?'&':'?'; target=_cf+sep+'url='+encodeURIComponent(url); }
+  const ac=new AbortController();const t=setTimeout(()=>ac.abort(),to);
+  try{
+    const r=await fetch(target);
+    if(r.ok){ const t2=await r.text(); if(t2) return t2; }
+    throw new Error('CF 代理返回空/HTTP '+(r&&r.status));
+  }finally{clearTimeout(t)}
+}
 let _reqGen=0;   // 请求代际：切源/切分类/搜索时 ++，旧请求回来后不再更新状态栏，防止「卡在加载中」的假象
 async function req(url,timeoutSec=16,quiet=false,opts){
   const _method=(opts&&opts.method==='POST')?'POST':'GET';
@@ -1380,13 +1420,23 @@ async function req(url,timeoutSec=16,quiet=false,opts){
         ?{method:'POST',headers:Object.assign({'Content-Type':'application/x-www-form-urlencoded'},h),body:_body,signal:ac.signal,credentials:'omit'}
         :{headers:h,signal:ac.signal,credentials:'omit'});
     }finally{clearTimeout(t)}
-    return await r.text()
+    const dt=await r.text();
+    // CF 五秒盾：直连若拿到挑战页(普通 allorigins/codetabs 这类纯 HTTP 代抓过不了 CF)，
+    // 且已配置 CF 绕过代理，则改走它求解，跳过无效的普通代理轮询。
+    if(CF_PROXY && _isCfChallenge(dt)) return await cfReq(url,timeoutSec);
+    return dt;
   }catch(e){
     // 直连被 CORS / 混合内容拦截时，再尝试 CORS 代理（仅浏览器网页场景）
     let lastErr=e.message;
     for(const mk of CORS_PROXIES){
-      try{let r=await fetch(mk(url));if(r.ok){let t=await r.text();if(t)return t}lastErr='HTTP '+r.status}
+      try{let r=await fetch(mk(url));if(r.ok){let t=await r.text();
+        if(CF_PROXY && _isCfChallenge(t)) return await cfReq(url,timeoutSec);
+        if(t)return t}lastErr='HTTP '+r.status}
       catch(err){lastErr=err.message}
+    }
+    // CORS 代理也失败：若配了 CF 绕过代理，最后再试一次(应对「直连因 CORS 报错而非拿到挑战页」的情况)
+    if(CF_PROXY){
+      try{ return await cfReq(url,timeoutSec); }catch(err){ lastErr=err.message; }
     }
     throw new Error(lastErr||'请求失败');
   }
