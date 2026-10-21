@@ -6894,7 +6894,7 @@ function extractRegionHint(x){
 // TMDB 请求：优先走原生桥接 fm.req（App 内可直连 api.tmdb.org，绕过 WebView fetch 限制），
 // 无桥接时用带超时的 fetch；连续失败熔断，避免拖慢界面
 let _tmdbDead=false,_tmdbFail=0,_tmdbDeadAt=0;
-async function tmdbJSON(url,timeoutSec=10){
+async function tmdbJSON(url,timeoutSec=4){
   if(_tmdbDead){
     if(Date.now()-_tmdbDeadAt>30000){ _tmdbDead=false; _tmdbFail=0; }
     else throw new Error('tmdb-skip');
@@ -11729,10 +11729,12 @@ async function _loadDetailContent(v){
     // TMDB 高清海报与详情页解析并发拉取，不先铺站源模糊图
     const _detYear=extractYearStrict(v)||extractYear(v)||'';
     const _detRegion=extractRegionHint(v);
+    // 是否禁用 TMDB（黄果/吃瓜等源只用站源图）；详情页/轮播多处复用
+    const _tmdbOff=!!(v._noTmdb||v.siteId==='huangguoai'||v.siteId==='cg57'||v.siteId==='huangdou'||v.siteId==='flickreels'||v.siteId==='jinguo'||v.siteId==='madou'||v.siteId==='badnews'||(v.href&&(String(v.href).indexOf('huangguoai://')===0||String(v.href).indexOf('__removed_hg://')===0||String(v.href).indexOf('huangdou://')===0||String(v.href).indexOf('__removed_mj://')===0||String(v.href).indexOf('flickreels://')===0||String(v.href).indexOf('jinguo://')===0||String(v.href).indexOf('chigua57://')===0)));
     // 详情海报：优先用卡片已挂上的 TMDB 结果，再走同一套 resolve（与卡片共享缓存）
     const heroPromise=(async()=>{
       // 黄果等：只用站源封面，禁止 TMDB
-      if(v._noTmdb || v.siteId==='huangguoai' || v.siteId==='cg57' || v.siteId==='huangdou' || v.siteId==='flickreels' || v.siteId==='jinguo' || v.siteId==='madou' || v.siteId==='badnews' || (v.href&&(String(v.href).indexOf('huangguoai://')===0||String(v.href).indexOf('__removed_hg://')===0||String(v.href).indexOf('huangdou://')===0||String(v.href).indexOf('__removed_mj://')===0||String(v.href).indexOf('flickreels://')===0||String(v.href).indexOf('jinguo://')===0||String(v.href).indexOf('chigua57://')===0))){
+      if(_tmdbOff){
         const enc=pickAttachedPoster(v, true) || v._sitePic || v.pic || null;
         if(!enc) return null;
         if(/^blob:|^data:/i.test(enc)) return enc;
@@ -11742,23 +11744,14 @@ async function _loadDetailContent(v){
         }catch(e){}
         return enc;
       }
-      let u=pickAttachedPoster(v, true);
-      if(u && /(?:image|images)\.tmdb\.org/i.test(u)) return u;
-      const bundle=await resolvePosterBundle(v.title||'', _detYear, _detRegion);
-      if(bundle){
-        attachPosterBundle(v, bundle);
-        if(bundle.full) return bundle.full;
-        if(bundle.backdrop) return bundle.backdrop;
-        if(bundle.list) return bundle.list;
-      }
-      // 最后：站源/卡片已显示的图互相填补
-      u=pickAttachedPoster(v, true);
-      if(u) return u;
-      return null;
+      // 方案A：立即返回卡片已挂图(可能已是TMDB高清)或站源图，不阻塞 TMDB 查询；
+      // 高清 TMDB 图由下方 heroPromise.then 之后的后台任务解析完成后静默替换，首屏立即可见
+      const u=pickAttachedPoster(v, true);
+      return u || null;
     })();
     const imagesPromise=(async()=>{
       // 黄豆/黄果/吃瓜/麻豆等：禁止 TMDB 海报与轮播背景
-      if(v._noTmdb || v.siteId==='huangguoai' || v.siteId==='cg57' || v.siteId==='huangdou' || v.siteId==='flickreels' || v.siteId==='jinguo' || v.siteId==='madou' || v.siteId==='badnews' || (v.href&&(String(v.href).indexOf('huangguoai://')===0||String(v.href).indexOf('__removed_hg://')===0||String(v.href).indexOf('huangdou://')===0||String(v.href).indexOf('__removed_mj://')===0||String(v.href).indexOf('flickreels://')===0||String(v.href).indexOf('jinguo://')===0||String(v.href).indexOf('chigua57://')===0))){
+      if(_tmdbOff){
         return [];
       }
       let list=await tmdbImagesCached(v.title||'',_detYear);
@@ -11902,6 +11895,17 @@ async function _loadDetailContent(v){
       if(_currentDetailItem!==v||!sitePic)return;
       applyHeroUrl(sitePic);
     });
+    // 方案A：后台静默拉取 TMDB 高清海报，解析完成后无缝替换首屏站源图（不阻塞详情加载）
+    if(!_tmdbOff){
+      resolvePosterBundle(v.title||'', _detYear, _detRegion).then(function(bundle){
+        if(_currentDetailItem!==v) return;
+        if(bundle){
+          try{ attachPosterBundle(v, bundle); }catch(eA){}
+          const best=bundle.full||bundle.backdrop||bundle.list;
+          if(best) applyHeroUrl(best);
+        }
+      }).catch(function(){});
+    }
     // 海报轮播：根据横竖屏取对应无字版图集，A/B 交替 crossfade
     imagesPromise.then(async function(entries){
       if(_currentDetailItem!==v)return;
