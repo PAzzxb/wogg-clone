@@ -2844,6 +2844,36 @@ textarea.custom-modal-input{
 .pan-health-dot[data-state="uncertain"]{background:rgba(255,255,255,.35)}
 .pan-health-dot[data-state="unsupported"]{visibility:hidden}
 
+/* ===== Nostr 详情页手动盘搜框：对齐详情页暗色 + 橙色主题 ===== */
+.pan-manual-search{
+  display:flex;gap:8px;margin:0 0 12px;
+}
+.pan-manual-search #panManualInput{
+  flex:1 1 auto;min-width:0;
+  background:rgba(255,255,255,.06);
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:12px;
+  color:var(--text);font-size:15px;line-height:1.2;
+  padding:11px 13px;outline:none;
+  transition:border-color .15s,background .15s;
+}
+.pan-manual-search #panManualInput::placeholder{color:var(--muted)}
+.pan-manual-search #panManualInput:focus{
+  border-color:rgba(var(--accent-rgb),.6);
+  background:rgba(255,255,255,.09);
+}
+.pan-manual-search #panManualBtn{
+  flex:0 0 auto;
+  background:var(--accent-grad);
+  color:#fff;font-weight:700;font-size:15px;
+  border:none;border-radius:12px;
+  padding:11px 20px;cursor:pointer;
+  box-shadow:0 2px 10px rgba(var(--accent-rgb),.30);
+  transition:transform .12s,box-shadow .15s,filter .15s;
+}
+.pan-manual-search #panManualBtn:active{transform:scale(.96)}
+@media(hover:hover){.pan-manual-search #panManualBtn:hover{filter:brightness(1.06)}}
+
 /* ===== 盘搜设置：TG频道 / 搜索插件 / 网盘类型三类资源管理（PanSou 插件）===== */
 .pan-url-history{
   display:none;
