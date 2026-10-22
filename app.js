@@ -1,3 +1,96 @@
+/* ==========================================================================
+   App WebView 兼容兜底（必须最先执行，勿删）
+   背景：本文件在 App 内置 WebView 里运行，部分壳子的 WebView 与桌面浏览器有差异：
+     ① 有的 WebView 禁用了 DOM Storage，直接访问 localStorage 会抛异常；
+        本文件顶层有多处 localStorage 调用，一抛就整段脚本停止执行 —— 表现为
+        「App 里白屏/卡在准备加载…，但浏览器里完全正常」。
+     ② 老版本 WebView（Chromium < 80）不支持可选链 ?. 、String.matchAll 等语法/API，
+        一旦遇到就是整文件 SyntaxError，同样表现为 App 里完全跑不起来。
+     ③ 出错时页面没有任何提示，无法定位 —— 这里把错误直接显示到页面上。
+   ========================================================================== */
+(function(){
+  /* ① localStorage 兜底：不可用时降级为内存实现，保证脚本不中断 */
+  var _lsOk=false;
+  try{ var _k='__wo_probe__'; window.localStorage.setItem(_k,'1'); window.localStorage.removeItem(_k); _lsOk=true; }catch(e){}
+  if(!_lsOk){
+    try{
+      var _mem={};
+      var _shim={
+        getItem:function(k){ return Object.prototype.hasOwnProperty.call(_mem,k)?_mem[k]:null; },
+        setItem:function(k,v){ _mem[k]=String(v); },
+        removeItem:function(k){ delete _mem[k]; },
+        clear:function(){ _mem={}; },
+        key:function(i){ var a=Object.keys(_mem); return i<a.length?a[i]:null; }
+      };
+      try{ Object.defineProperty(_shim,'length',{get:function(){return Object.keys(_mem).length;}}); }catch(e){}
+      Object.defineProperty(window,'localStorage',{configurable:true,get:function(){return _shim;}});
+    }catch(e){}
+  }
+
+  /* ② String.prototype.matchAll 兜底（老 WebView 缺此 API） */
+  if(typeof String.prototype.matchAll!=='function'){
+    String.prototype.matchAll=function(re){
+      var s=String(this), flags=(re&&re.flags)||'', r;
+      if(flags.indexOf('g')<0) flags+='g';
+      try{ r=new RegExp(re.source,flags); }catch(e){ return []; }
+      var m,out=[],guard=0;
+      while((m=r.exec(s))!==null){
+        out.push(m);
+        if(m[0]==='') r.lastIndex++;      /* 防止零宽匹配死循环 */
+        if(++guard>200000) break;
+      }
+      return out;
+    };
+  }
+
+  /* ③ Array.prototype.flatMap / flat 兜底（Chromium 69 以下缺失） */
+  if(typeof Array.prototype.flatMap!=='function'){
+    Array.prototype.flatMap=function(fn,ctx){
+      var self=this,out=[];
+      for(var i=0;i<self.length;i++){
+        var v=fn.call(ctx,self[i],i,self);
+        if(Array.isArray(v)){ for(var j=0;j<v.length;j++) out.push(v[j]); } else out.push(v);
+      }
+      return out;
+    };
+  }
+  if(typeof Array.prototype.flat!=='function'){
+    Array.prototype.flat=function(depth){
+      var self=this,d=(depth===undefined?1:depth)|0,out=[];
+      for(var i=0;i<self.length;i++){
+        var v=self[i];
+        if(Array.isArray(v)&&d>0){ var f=v.flat(d-1); for(var j=0;j<f.length;j++) out.push(f[j]); }
+        else out.push(v);
+      }
+      return out;
+    };
+  }
+
+  /* ④ AbortController 兜底（极老 WebView 缺此 API） */
+  if(typeof window.AbortController==='undefined'){
+    window.AbortController=function(){ this.signal=undefined; this.abort=function(){}; };
+  }
+
+  /* ⑤ 错误可视化：脚本抛错时直接显示在页面状态栏，避免「无声卡死」无法排查 */
+  function _showErr(msg){
+    try{
+      var el=document.getElementById('status');
+      if(!el) return;
+      el.textContent='脚本错误：'+msg;
+      el.style.color='#ff6b6b';
+      el.style.display='block';
+      el.style.whiteSpace='pre-wrap';
+    }catch(e){}
+  }
+  window.addEventListener('error', function(e){
+    if(e&&e.message) _showErr(e.message+(e.lineno?(' @line '+e.lineno):''));
+  });
+  window.addEventListener('unhandledrejection', function(e){
+    var r=e&&e.reason;
+    _showErr('Promise: '+((r&&r.message)||r||'未知'));
+  });
+})();
+
 
 /* iOS 标记（对齐听书；布局仅靠 html.is-ios + @supports，安卓不加 class） */
 (function(){
@@ -1875,7 +1968,7 @@ function posterPeerKey(v){
 function stripHtmlTags(t){return String(t||'').replace(/<[^>]*>/g,'').trim()}
 function cardFrom(el,base,site){
   let a=el.querySelector('a[href]')||el.closest('a[href]')||el,href=a.getAttribute('href')||'';
-  let img=el.querySelector('img'),title=a.getAttribute('title')||img&&img.getAttribute('alt')||clean(el.querySelector('.module-item-title,.module-search-item-title,.video-title,.title,.card-tt')?.textContent)||clean(a.textContent);
+  let img=el.querySelector('img'),title=a.getAttribute('title')||img&&img.getAttribute('alt')||clean((el.querySelector('.module-item-title,.module-search-item-title,.video-title,.title,.card-tt')||{}).textContent)||clean(a.textContent);
   title=stripHtmlTags(title);   // 6V 等站搜索结果用 <font color='red'> 高亮关键词
 
   // 米字型：标题常带 [夸克网盘]国家电影《片名》（年份）类型 豆瓣x.x —— 只留《》内片名
@@ -1888,7 +1981,7 @@ function cardFrom(el,base,site){
   let picRaw=imgUrl(img&&(img.getAttribute('data-src')||img.getAttribute('data-original')||img.getAttribute('src'))||'');
   let pic=picRaw?abs(base,picRaw):'';
   // 先声明 remark，避免 TDZ
-  let remark=clean(el.querySelector('.module-item-note,.module-search-item-note,.video-info,.note,.card-meta')?.textContent)||site.name;
+  let remark=clean((el.querySelector('.module-item-note,.module-search-item-note,.video-info,.note,.card-meta')||{}).textContent)||site.name;
   // bad.news：帖子卡片 data-tid → /t/id；封面优先 video poster / data-echo
   if(site&&site.id==='badnews'){
     const tid=(el.getAttribute&&el.getAttribute('data-tid'))||'';
@@ -6167,7 +6260,7 @@ async function av18AesDecryptB64(b64, keyStr, ivStr){
     const keyData=enc.encode(String(keyStr));
     const iv=enc.encode(String(ivStr));
     // 兼容：CryptoJS Utf8.parse 把字符串当 UTF-8 字节（16 字节 = AES-128）
-    if(!(globalThis.crypto&&crypto.subtle)) return '';
+    if(!(window.crypto&&window.crypto.subtle)) return '';
     const key=await crypto.subtle.importKey('raw', keyData, {name:'AES-CBC'}, false, ['decrypt']);
     const raw=Uint8Array.from(atob(b64), c=>c.charCodeAt(0));
     const plain=await crypto.subtle.decrypt({name:'AES-CBC', iv:iv}, key, raw);
@@ -11762,7 +11855,7 @@ async function parseDetail(v){
       const _tEl=(s.titleSelector&&d.querySelector(s.titleSelector))||d.querySelector('h1,.title,.module-info-heading h1,.dt-hd h1,.entry-title');
       let title=stripTitleNoise(clean(stripHtmlTags(
         _tEl&&_tEl.textContent
-        || d.querySelector('.res[data-title]')?.getAttribute('data-title')
+        || ((d.querySelector('.res[data-title]'))||{getAttribute:function(){return null}}).getAttribute('data-title')
         || ''
       )))||src.title;
       // 米字等：详情页 h1 常带整段 SEO 串，统一用 detailShowTitle 再剥一次
@@ -11771,7 +11864,7 @@ async function parseDetail(v){
       let picEl=d.querySelector('.module-info-poster img,.detail-pic img,.card-pic img,.dt-poster img');
       let picRaw=picEl?(picEl.getAttribute('data-src')||picEl.getAttribute('data-original')||picEl.getAttribute('src')||''):'';
       let pic=imgUrl(picRaw)||src.pic||'';
-      let desc=clean(d.querySelector('.module-info-introduction,.desc,.module-info-content,.dt-info')?.textContent)||'';
+      let desc=clean((d.querySelector('.module-info-introduction,.desc,.module-info-content,.dt-info')||{}).textContent)||'';
       let pans=[];
       let txtEls=[...d.querySelectorAll(s.detailPanSelector||'.module-row-info p')];
       txtEls.forEach(p=>{
