@@ -2097,6 +2097,7 @@ function renderTabs(){
         const targetId=b.dataset.id;
         const switchGen=++_siteSwitchGen;
         activeSite=targetId;
+        try{ _histMode=false; }catch(err){}   // 切站源即离开历史视图，否则分类加载会被拦、仍停在观看记录
         try{ setMainScrollY(0); }catch(err){}
         renderTabs();
         try{ renderChipsSkeleton(); }catch(err){}
@@ -2154,6 +2155,7 @@ function renderTabs(){
     const switchGen=++_siteSwitchGen;
     _reqGen++;   // 切源即作废上一个源所有在飞请求的状态栏更新
     activeSite=targetId;
+    try{ _histMode=false; }catch(err){}   // 切站源即离开历史视图，否则点站源后仍停在观看记录
     collapse();            // 选完立刻收起
     renderTabs();          // 会重建 DOM，同时 collapse（默认不带 expanded）
     try{ if(typeof syncSearchPlaceholder==='function') syncSearchPlaceholder(); }catch(e){}
@@ -6712,7 +6714,8 @@ async function loadCategory(){
   _reqGen++;      // 作废仍在重试的旧请求链：它们回来后不再改写状态栏（修复切源后状态栏卡在旧源URL）
   const gen=++_catGen;   // 本次分类请求的代际号：之后任何「又切了别的分类」都会让它失效，慢请求晚到不再覆盖新内容
   // 历史/最近观看视图期间：任何迟到的分类请求都不得覆盖历史列表（否则看记录会被分类卡片冲掉）
-  if(_histMode) return;
+  // 双保险：必须确实是历史视图（_histMode 且 activeCat 仍是 history*），切站后不会被误拦
+  if(_histMode && (activeCat==='history'||activeCat==='history_all')) return;
   try{ _posterEnhGen++; }catch(e){}  // 立刻作废上一批海报增强，防止串贴
   try{ setMainScrollY(0); }catch(e){}
   if(window._backTopReset) try{ _backTopReset(); }catch(e){}
