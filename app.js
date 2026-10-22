@@ -5273,28 +5273,36 @@ async function maccmsList(s,cat,pg){
 }
 
 async function maccmsCats(s){
-  // 从列表前几页聚合真实分类（type_id/type_name 去重），「剧集类」排最前、作为站点首页默认分类。
-  // 各站 type_id 不统一、?ac=type 不可靠，故用列表项自带分类聚合，比死板硬编码更准。
+  // 聚合真实分类：① 列表前几页（有真实内容、最可靠）② ?ac=type 采样补充（确保国产/内地/电视剧不被漏）
+  // 排序：国产剧/内地剧/电视剧/大陆剧 置顶 → 作为站点首页默认分类；其次其它剧；最后非剧（电影/综艺/动漫…）
   const seen={};
+  const add=(tid,tnm)=>{ tid=String(tid!=null?tid:'').trim(); tnm=clean(tnm||''); if(tid&&tnm&&!seen[tid]) seen[tid]=tnm; };
   try{
-    for(let pg=1; pg<=3; pg++){
+    for(let pg=1; pg<=4; pg++){
       const data=await maccmsApi(s,'ac=list&pg='+pg);
       const list=((data&&data.list)||[]);
-      for(const it of list){
-        const tid=String(it.type_id!=null?it.type_id:'').trim();
-        const tnm=clean(it.type_name||'');
-        if(tid && tnm && !seen[tid]) seen[tid]=tnm;
-      }
-      if(Object.keys(seen).length>=10) break;
+      for(const it of list) add(it.type_id, it.type_name);
+      if(Object.keys(seen).length>=12) break;
     }
   }catch(e){}
+  try{
+    const t=await maccmsApi(s,'ac=type');
+    for(const it of ((t&&t.list)||[])) add(it.type_id, it.type_name);
+  }catch(e){}
   const real=Object.keys(seen).map(tid=>[tid, seen[tid]]);
-  // 排序：国产剧/电视剧/连续剧 最前，其次其它「剧」，最后非剧（电影/综艺/动漫…）
-  const rank=n=>(/国产剧|电视剧|连续剧/.test(n)?0:/剧/.test(n)?1:2);
-  real.sort((a,b)=>rank(a[1])-rank(b[1]));
+  // 首页优先关键词（按优先级）：国产剧 > 内地剧 > 电视剧 > 大陆剧；其次任意「剧」；最后非剧
+  const HOME=['国产剧','内地剧','电视剧','大陆剧'];
+  const homeIdx=n=>{ for(let i=0;i<HOME.length;i++) if(n.indexOf(HOME[i])>=0) return i; return 99; };
+  const rank=n=>(homeIdx(n)<99?0:(/剧/.test(n)?1:2));
+  real.sort((a,b)=>{
+    const ra=rank(a[1]), rb=rank(b[1]);
+    if(ra!==rb) return ra-rb;
+    if(ra===0) return homeIdx(a[1])-homeIdx(b[1]); // 国产剧优先于内地剧/电视剧/大陆剧
+    return 0;
+  });
   const drama=real.filter(c=>rank(c[1])<2);
   const other=real.filter(c=>rank(c[1])===2);
-  // 首页默认 = 第一个剧集类（国产剧/电视剧）；其后才是「最新」，最后是其它分类
+  // 站点主页默认 = 第一个国产/内地/电视剧类（没有则第一个剧，都没有才「最新」）
   return drama.concat([['latest','最新']]).concat(other);
 }
 
