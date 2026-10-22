@@ -9556,6 +9556,14 @@ const isJinpai=!!(p._jinpai || p.siteName==='金牌' || pageUrl.indexOf('jinpai:
     // 1) vodInline：原生播放页才有标题 + 线路名 + 海报（原版路径）
     if(u && fm && fm.vodInline){
       try{
+        // 壳子（WebHome/FongMi SDK）定位「起始集」的契约顺序：
+        //   episodes[].active:true  →  payload.mark 匹配集名  →  第一项
+        // 契约里根本没有 index/playIndex/position 这些字段——以前只传 index，
+        // 壳子直接忽略，于是永远落到「第一项」= 第1集（现象：点第3/5/10集都从第1集播）。
+        // 现在双保险：选中集打 active:true，同时把 mark 改成该集的集名。
+        const _selIdx=(typeof p._playIndex==="number"&&p._playIndex>=0)
+          ?Math.min(p._playIndex,Math.max(0,epList.length-1)):0;
+        const _selEp=epList[_selIdx]||epList[0]||null;
         const payload={
           url:u,
           playUrl:u,
@@ -9570,9 +9578,12 @@ const isJinpai=!!(p._jinpai || p.siteName==='金牌' || pageUrl.indexOf('jinpai:
           vod_pic:pic,
           wallPic:pic,
           vod_play_from:flagName,
-          mark:flagName,
+          // mark = 进入播放页默认选中的「集名」（不是线路名！）。壳子拿它和集名做匹配，
+          // 匹配不上就退回第一项。以前这里传 flagName（如"360资源"）永远匹配不到。
+          mark:String((_selEp&&_selEp.name)||flagName||''),
           vod_play_url:playUrlJoined,
-          episodes:epList.map(e=>({name:e.name,url:e.url})),
+          // 选中集显式打 active:true（壳子最高优先级的就是它）
+          episodes:epList.map((e,ei)=>ei===_selIdx?{name:e.name,url:e.url,active:true}:{name:e.name,url:e.url}),
           type_name:String(meta.typeName||meta.cls||flagName||''),
           vod_class:String(meta.cls||meta.typeName||''),
           vod_tag:String(meta.tag||''),
@@ -9589,11 +9600,19 @@ const isJinpai=!!(p._jinpai || p.siteName==='金牌' || pageUrl.indexOf('jinpai:
           site_name:String(meta.siteName||flagName||''),
           siteName:String(meta.siteName||flagName||''),
           from:String(flagName||meta.siteName||''),
-          playIndex:(typeof p._playIndex==="number"?p._playIndex:0),
-          position:(typeof p._playIndex==="number"?p._playIndex:0),
-          // 起始集必须跟实际点选的集走：写死 0 会让壳子忽略 url 直接从第 1 集开始播
-          index:(typeof p._playIndex==="number"?p._playIndex:0),
-          episodeIndex:(typeof p._playIndex==="number"?p._playIndex:0)
+          // 以下数字字段不在 WebHome 契约里，仅作兜底：个别壳子版本会读其中之一
+          playIndex:_selIdx,
+          position:_selIdx,
+          index:_selIdx,
+          episodeIndex:_selIdx,
+          // 再补几个常见别名，尽量让任何壳子实现都能定位到选中集
+          activeIndex:_selIdx,
+          currentIndex:_selIdx,
+          selectedIndex:_selIdx,
+          currentEpisode:Number(_selIdx)+1,
+          episode:String((_selEp&&_selEp.name)||''),
+          episodeName:String((_selEp&&_selEp.name)||''),
+          playIndexName:String((_selEp&&_selEp.name)||'')
         };
         if(hdr) payload.headers=hdr;
         if(_okxHls) payload.format='hls';   // OKXXX 的 .mp4 实为 HLS：显式告知原生端，避免按直连 mp4 播放失败
