@@ -1891,15 +1891,12 @@ function effCats(s){
   const mode=(typeof getNavMode==='function'&&getNavMode())||'dock';
   // 仅 id===history 视为本地观看记录；文案叫「最近」的真实页面分类（如旧 latest）不误伤
   const isHist=c=>c&&c[0]==='history';
-  if(mode==='top'){
-    // 顶栏：所有站源类别首位保证有「最近」(history)；已有则挪到第一，不重复加
-    const idx=cats.findIndex(isHist);
-    if(idx<0) cats=[['history','最近']].concat(cats);
-    else if(idx>0){ const h=cats.splice(idx,1)[0]; cats.unshift(['history', h[1]||'最近']); }
-  }else{
-    // 底坞：各站 history 去掉，统一放到底坞「最近观看」按钮
-    cats=cats.filter(c=>!isHist(c));
-  }
+  // 顶栏/底坞：站点分类栏首位都保证有「最近观看」(history)；已有则挪到第一，不重复加。
+  // 底坞底部另有「最近观看」pill 汇总全站记录，两者互补（分类栏=当前站，pill=全站）。
+  // 默认主页仍由 firstRealCat 跳过 history 锁定到第一个真实分类（国产剧/电视剧），互不冲突。
+  const idx=cats.findIndex(isHist);
+  if(idx<0) cats=[['history','最近观看']].concat(cats);
+  else if(idx>0){ const h=cats.splice(idx,1)[0]; cats.unshift(['history', h[1]||'最近观看']); }
   // 短剧：整站随 IP 显隐；黄豆/黄果/黄雀/禁果均仅海外 IP 或 VPN 时显示
   if(s&&(s.id==='duanju'||s.type==='duanju')&&typeof _netShouldShowOverseas==='function'&&!_netShouldShowOverseas()){
     cats=cats.filter(c=>c&&c[0]!=='hd'&&c[0]!=='hga'&&c[0]!=='hq'&&c[0]!=='jg');
@@ -2370,9 +2367,10 @@ function activateCategory(id,slideDir){
   if(window._backTopReset) try{ _backTopReset(); }catch(e){}
   if(id==='history'||id==='history_all'){
     _searchGen++;_catGen++;_catSnapshot=null;
-    const all=id==='history_all'||(typeof getNavMode==='function'&&getNavMode()==='dock');
-    const hList=all?historyList.slice():historyList.filter(x=>x.siteId===activeSite);
-    // 底坞「最近观看」展示全站记录时，卡片显示站源角标
+    const all=id==='history_all';
+    const site=activeSite||'';
+    // 分类栏「最近观看」= 当前站点记录；底坞 pill（history_all）= 全站记录
+    const hList=all?historyList.slice():(site?historyList.filter(x=>x.siteId===site):historyList.slice());
     _aggSearchRender=!!all;
     renderGrid(hList,false);
     _aggSearchRender=false;
