@@ -1945,6 +1945,14 @@ function stripHuajuanPrefix(name){
 }
 async function ensureCats(s){
   if(CATS_CACHE[s.id])return CATS_CACHE[s.id];
+  if(s.type==='maccms'){
+    // 聚合真实分类（剧集类置顶→首页默认国产剧/电视剧）；浏览器无代理时聚合失败则回退仅「最新」
+    try{
+      const c=await maccmsCats(s);
+      if(c&&c.length){ CATS_CACHE[s.id]=c; return c; }
+    }catch(e){}
+    const fb=[['latest','最新']]; CATS_CACHE[s.id]=fb; return fb;
+  }
   if(s.type==='flarum'||s.noAutoCats){ CATS_CACHE[s.id]=s.cats; return s.cats; }
   if(s.id==='fangkong'||s.listStyle==='list'){ CATS_CACHE[s.id]=s.cats; return s.cats; }  // 放空等列表站：固定「最近」
   try{
@@ -5211,6 +5219,14 @@ async function maccmsApi(s, qs){
   // qs: 查询串（不含前导 ?），如 'ac=list&pg=1'
   // 复用全局 req()：App 内走 fm.req 原生桥接；纯浏览器网页走「直连 → CORS 代理」兜底，
   // 与其它所有站源完全一致（这些 MacCMS 接口不返回 CORS 头，浏览器直连会被挡，必须靠代理层）。
+  // 浏览器网页（非 App）且未配置任何代理时：直连必被 CORS 拦截，再试已失效的公共代理只会长时间
+  // 假死（表现为「一直在刷新」）。同步判定（不等待 fmReady 的 4s 探测）后直接快速失败并给明确提示，
+  // 不再把请求丢进 req() 的代理轮询。App 内 window.fm 通常早已注入，_fmNow 为真 → 跳过本拦截。
+  const _fmNow=(typeof window!=='undefined')&&(window.fm||window.fongmiBridge);
+  if(!_fmNow && !CF_PROXY){
+    throw new Error('需在 App 壳内打开，或配置代理（wo_cf_proxy）才能访问该采集源');
+  }
+  const fm=await fmReady();
   const base=String(s.apiBase||'').replace(/\/+$/,'');
   const url=base+'?'+qs;
   let lastErr='';
@@ -5237,7 +5253,9 @@ function maccmsToCard(it,s){
 
 async function maccmsList(s,cat,pg){
   const page=Math.max(1,pg|0);
-  const data=await maccmsApi(s,'ac=list&pg='+page);
+  // 最新走 ac=list&pg=N；真实分类走 ac=list&t={type_id}&pg=N（t 为正确过滤参数，type= 会串类）
+  const qs=(cat&&cat!=='latest')?('ac=list&t='+encodeURIComponent(cat)+'&pg='+page):('ac=list&pg='+page);
+  const data=await maccmsApi(s,qs);
   const list=((data&&data.list)||[]);
   let cards=list.map(it=>maccmsToCard(it,s)).filter(x=>x.title&&x._maccmsId).slice(0,60);
   // ac=list 不返回 vod_pic，单独批取详情补封面（失败不影响列表展示）
@@ -5252,6 +5270,32 @@ async function maccmsList(s,cat,pg){
     }catch(e){}
   }
   return cards;
+}
+
+async function maccmsCats(s){
+  // 从列表前几页聚合真实分类（type_id/type_name 去重），「剧集类」排最前、作为站点首页默认分类。
+  // 各站 type_id 不统一、?ac=type 不可靠，故用列表项自带分类聚合，比死板硬编码更准。
+  const seen={};
+  try{
+    for(let pg=1; pg<=3; pg++){
+      const data=await maccmsApi(s,'ac=list&pg='+pg);
+      const list=((data&&data.list)||[]);
+      for(const it of list){
+        const tid=String(it.type_id!=null?it.type_id:'').trim();
+        const tnm=clean(it.type_name||'');
+        if(tid && tnm && !seen[tid]) seen[tid]=tnm;
+      }
+      if(Object.keys(seen).length>=10) break;
+    }
+  }catch(e){}
+  const real=Object.keys(seen).map(tid=>[tid, seen[tid]]);
+  // 排序：国产剧/电视剧/连续剧 最前，其次其它「剧」，最后非剧（电影/综艺/动漫…）
+  const rank=n=>(/国产剧|电视剧|连续剧/.test(n)?0:/剧/.test(n)?1:2);
+  real.sort((a,b)=>rank(a[1])-rank(b[1]));
+  const drama=real.filter(c=>rank(c[1])<2);
+  const other=real.filter(c=>rank(c[1])===2);
+  // 首页默认 = 第一个剧集类（国产剧/电视剧）；其后才是「最新」，最后是其它分类
+  return drama.concat([['latest','最新']]).concat(other);
 }
 
 async function maccmsSearch(s,q){
