@@ -1422,7 +1422,9 @@ function clearHistory(all){
   if(all!==false||!site){ historyList.length=0; }
   else{ for(let i=historyList.length-1;i>=0;i--){ if(historyList[i]&&historyList[i].siteId===site) historyList.splice(i,1); } }
   saveHistory();
-  renderHistView();
+  // 只在正停留在历史视图时重渲染；否则保持当前页面（长按清空时不会被强行跳到历史页）
+  if(isHistView()) renderHistView();
+  else{ try{ syncHistoryPill(); }catch(e){} }
   toast(all!==false?'已清空全部观看记录':'已清空本站观看记录');
 }
 // 跨标签/多窗口同步：另一页面写入后本页立即跟随
@@ -13843,6 +13845,8 @@ function syncHistoryPill(){
   pill.classList.toggle('on', !!on);
 }
 function openHistoryAll(e){
+  // 长按已触发（弹确认框）：抑制随后的 click，避免「删完又打开历史页」
+  if(_histLpFired){ _histLpFired=false; if(e){ try{ e.stopPropagation(); e.preventDefault(); }catch(_){} } return; }
   if(e){ e.stopPropagation(); e.preventDefault(); }
   const row=document.getElementById('srcRow');
   const dock=document.getElementById('bottomDock');
@@ -13863,12 +13867,84 @@ function openHistoryAll(e){
   renderHistView();
   syncHistoryPill();
 }
+// 长按（560ms）底部「观看记录」按钮：弹出确认框，确定才清空；取消/点遮罩一律不删
+let _histLpFired=false, _histLpBusy=false;
+/** 自绘确认弹窗（App webview 无 window.confirm）：返回 Promise<boolean> */
+function confirmDialog(o){
+  o=o||{};
+  return new Promise(function(resolve){
+    let mask;
+    try{
+      mask=document.createElement('div');
+      mask.id='histClearMask';
+      mask.className='custom-modal-mask';
+      mask.innerHTML='<div class="custom-modal" style="max-width:420px;width:calc(100vw - 40px)">'
+        +'<div class="custom-modal-title">'+esc(o.title||'确认操作')+'</div>'
+        +(o.text?'<div class="cfm-text">'+esc(o.text)+'</div>':'')
+        +'<div class="custom-modal-actions">'
+        +'<button class="custom-modal-btn" data-act="cancel">'+esc(o.cancelText||'取消')+'</button>'
+        +'<button class="custom-modal-btn accent" data-act="ok">'+esc(o.okText||'确定')+'</button>'
+        +'</div></div>';
+      document.body.appendChild(mask);
+    }catch(e){ resolve(false); return; }
+    function close(v){
+      try{ mask.classList.remove('show'); }catch(e){}
+      setTimeout(function(){ try{ mask.remove(); }catch(e){} },220);
+      resolve(v);
+    }
+    requestAnimationFrame(function(){ try{ mask.classList.add('show'); }catch(e){} });
+    mask.addEventListener('click',function(e){ if(e.target===mask) close(false); });  // 点遮罩=取消
+    mask.querySelectorAll('.custom-modal-btn').forEach(function(b){
+      b.addEventListener('click',function(e){ e.stopPropagation(); close(b.dataset.act==='ok'); });
+    });
+  });
+}
 (function(){
   const btn=document.getElementById('srcHistoryBtn');
   const pill=document.getElementById('historyPill');
   if(!btn) return;
   btn.addEventListener('click', openHistoryAll);
   if(pill) pill.addEventListener('click', function(e){ if(e.target===pill) openHistoryAll(e); });
+  // 长按清空：touch + mouse 双通道；手指移动超过 12px 视为滚动，取消触发
+  var LP=560, MOVE=12;
+  [btn, pill].forEach(function(el){
+    if(!el) return;
+    var timer=null, sx=0, sy=0, fired=false;
+    function clearT(){ if(timer){ clearTimeout(timer); timer=null; } }
+    function start(x,y){
+      fired=false; sx=x; sy=y; clearT();
+      timer=setTimeout(function(){
+        timer=null; fired=true; _histLpFired=true;
+        if(_histLpBusy) return;             // 父子元素（btn 在 pill 内）长按会冒泡两次，只弹一个
+        _histLpBusy=true;
+        try{ if(navigator.vibrate) navigator.vibrate(12); }catch(_){}
+        var n=(typeof historyList!=='undefined'&&historyList)?historyList.length:0;
+        if(!n){ toast('还没有观看记录'); return; }
+        confirmDialog({
+          title:'清空观看记录？',
+          text:'共 '+n+' 条记录，删除后无法恢复。',
+          okText:'确定删除', cancelText:'取消'
+        }).then(function(ok){
+          _histLpBusy=false;
+          if(!ok){ toast('已取消，未删除'); return; }
+          clearHistory(true);
+        });
+      }, LP);
+    }
+    function move(x,y){ if(!timer) return; if(Math.abs(x-sx)>MOVE||Math.abs(y-sy)>MOVE) clearT(); }
+    function end(e){ clearT(); if(fired){ try{ e.preventDefault(); e.stopPropagation(); }catch(_){} } }
+    // stopPropagation：srcHistoryBtn 是 historyPill 的子元素，不拦会父子各弹一次
+    el.addEventListener('touchstart',function(e){ try{ e.stopPropagation(); }catch(_){} var t=e.touches[0]; start(t.clientX,t.clientY); },{passive:true});
+    el.addEventListener('touchmove',function(e){ var t=e.touches[0]; move(t.clientX,t.clientY); },{passive:true});
+    el.addEventListener('touchend',end,{passive:false});
+    el.addEventListener('touchcancel',clearT,{passive:true});
+    el.addEventListener('mousedown',function(e){ if(e.button!==0) return; try{ e.stopPropagation(); }catch(_){} start(e.clientX,e.clientY); });
+    el.addEventListener('mousemove',function(e){ move(e.clientX,e.clientY); });
+    el.addEventListener('mouseup',end);
+    el.addEventListener('mouseleave',clearT);
+    // 屏蔽右键菜单，避免长按（移动端长按会触发 contextmenu）打断
+    el.addEventListener('contextmenu',function(e){ e.preventDefault(); });
+  });
 })();
 
 /* ===== 底部设置：当前站源域名自定义 ===== */
