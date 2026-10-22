@@ -5209,36 +5209,18 @@ async function jinpaiDetail(v){
 /* ===== 通用 MacCMS V10 provide/vod 采集解析（TVBox 同款接口，m3u8 在线播放）===== */
 async function maccmsApi(s, qs){
   // qs: 查询串（不含前导 ?），如 'ac=list&pg=1'
-  const fm=await fmReady();
+  // 复用全局 req()：App 内走 fm.req 原生桥接；纯浏览器网页走「直连 → CORS 代理」兜底，
+  // 与其它所有站源完全一致（这些 MacCMS 接口不返回 CORS 头，浏览器直连会被挡，必须靠代理层）。
   const base=String(s.apiBase||'').replace(/\/+$/,'');
   const url=base+'?'+qs;
-  const hdr={
-    'Accept':'application/json, text/plain, */*',
-    'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-  };
   let lastErr='';
-  // ① 原生桥接（App 内：真实浏览器环境，绕 Cloudflare/CORS）
-  if(fm&&fm.req){
-    try{
-      const r=await fm.req(url,{method:'GET',headers:hdr,responseType:'text',timeout:16});
-      if(r&&r.ok){
-        let body=r.body;
-        if(body!=null&&typeof body!=='string') body=JSON.stringify(body);
-        if(body){ const data=JSON.parse(body); if(data&&data.code===1) return data; lastErr='code '+(data&&data.code); }
-      }else{ lastErr=(r&&(r.error||('HTTP '+r.status)))||'原生请求失败'; }
-    }catch(e){ lastErr=(e&&e.message)||String(e); }
-  }
-  // ② 浏览器 fetch 兜底（非 App 环境；多数源允许跨域）
   try{
-    const ac=new AbortController();
-    const timer=setTimeout(()=>ac.abort(),16000);
-    let resp;
-    try{ resp=await fetch(url,{method:'GET',headers:hdr,signal:ac.signal}); }finally{ clearTimeout(timer); }
-    if(resp&&resp.ok){
-      const data=await resp.json();
+    const body=await req(url,16,true);
+    if(body!=null&&body!==''){
+      let data=(typeof body==='string')?JSON.parse(body):body;
       if(data&&data.code===1) return data;
       lastErr='code '+(data&&data.code);
-    }else{ lastErr=resp?('HTTP '+resp.status):'无响应'; }
+    }else{ lastErr='空响应'; }
   }catch(e){ lastErr=(e&&e.message)||String(e); }
   throw new Error(lastErr||'MacCMS 接口请求失败');
 }
