@@ -5493,7 +5493,12 @@ function maccmsParsePlayUrls(playUrl, playFrom, siteName, refBase){
 }
 
 async function maccmsDetail(v){
-  const siteId=String(v&&v.siteId||'');
+  let siteId=String(v&&v.siteId||'').trim();
+  // 从观看记录进来时站点信息可能不完整：用 href（maccms://<siteId>/<id>）反推，保证仍走采集详情
+  if(!siteId){
+    const ms=String(v&&v.href||'').match(/^maccms:\/\/([^/]+)\//);
+    if(ms) siteId=ms[1];
+  }
   let vodId=String((v&&(v._maccmsId||''))||'').trim();
   if(!vodId){
     const m=String(v&&v.href||'').match(/^maccms:\/\/[^/]+\/(\d+)/);
@@ -5504,9 +5509,8 @@ async function maccmsDetail(v){
   const refBase=(s.domains&&s.domains[0])||String(s.apiBase||'').replace(/\/api\.php\/provide\/vod.*$/,'')||'';
   let info={title:v.title||'',pic:v.pic||'',desc:'',siteName:s.name||'资源'};
   let pans=[];
-  try{
-    const data=await maccmsApi(s,'ac=detail&ids='+encodeURIComponent(vodId));
-    const vi=((data&&data.list&&data.list[0])||{});
+  const applyVod=(vi)=>{
+    if(!vi) return;
     let pic=String(vi.vod_pic||v.pic||'').trim();
     if(pic&&pic.charAt(0)==='/'&&refBase) pic=refBase.replace(/\/$/,'')+pic;
     info={
@@ -5526,7 +5530,27 @@ async function maccmsDetail(v){
       score:String(vi.vod_score||vi.vod_douban_score||'')
     };
     pans=maccmsParsePlayUrls(vi.vod_play_url||'', vi.vod_play_from||'', info.siteName, refBase);
+  };
+  try{
+    const data=await maccmsApi(s,'ac=detail&ids='+encodeURIComponent(vodId));
+    applyVod(((data&&data.list&&data.list[0])||{}));
   }catch(e){ console&&console.warn&&console.warn('[maccms detail]',e); }
+  // 取到 0 集：接口偶发空 / 站点换过 id → 用片名回搜一次拿 id 再取。
+  // 否则详情页空集会被盘搜顶替成一个同名网盘资源（现象：从观看记录点开却播夸克网盘）。
+  if(!pans.length && String(v.title||'').trim()){
+    try{
+      const sd=await maccmsApi(s,'ac=search&wd='+encodeURIComponent(String(v.title).trim())+'&pg=1');
+      const list=(sd&&sd.list)||[];
+      const want=String(v.title||'').trim();
+      const hit=list.find(it=>String(it.vod_name||'').trim()===want)||list[0];
+      const nid=hit?String((hit.vod_id!=null?hit.vod_id:(hit.id!=null?hit.id:''))).trim():'';
+      if(nid && nid!==String(vodId)){
+        const d2=await maccmsApi(s,'ac=detail&ids='+encodeURIComponent(nid));
+        applyVod(((d2&&d2.list&&d2.list[0])||{}));
+        if(pans.length && String(v._maccmsId)!==nid) v._maccmsId=nid;
+      }
+    }catch(e){ console&&console.warn&&console.warn('[maccms detail 回搜]',e); }
+  }
   return {info,pans,filmTitle:info.title};
 }
 
@@ -11672,7 +11696,8 @@ async function parseDetail(v){
   if(v&&(v.siteId==='flickreels'||(v.href&&String(v.href).indexOf('flickreels://')===0))) return flickreelsDetail(v);
   if(v&&(v.siteId==='cg57'||(v.href&&String(v.href).indexOf('chigua57://')===0)||(v.href&&/57cg4\.com\/events\//i.test(String(v.href))))) return chigua57Detail(v);
   if(v&&(v.siteId==='cg51'||v._chigua51Id||(v.href&&String(v.href).indexOf('chigua51://')===0)||(v.href&&/(?:benefit|agency|breathe|cfkhguby)\.[a-z0-9.-]+\/archives\//i.test(String(v.href))))) return chigua51Detail(v);
-  if(v&&v._maccms) return maccmsDetail(v);
+  // href 形如 maccms://<siteId>/<id>：即使 _maccms 标记丢失（如从观看记录恢复的旧条目）也走采集详情
+  if(v&&(v._maccms||String(v.href||'').indexOf('maccms://')===0)) return maccmsDetail(v);
   if(v&&v.siteId==='nostr'&&v._nostr){
     const n=v._nostr;const date=n.date||v.year||'';
     return {info:{title:v.title||'',pic:v.pic||'',desc:n.overview||'',siteName:'Nostr',year:String(date).slice(0,4),rating:n.rating||0,backdrop:n.backdrop||''},pans:[]};
@@ -12144,9 +12169,11 @@ async function _loadDetailContent(v){
     // 详情解析加总超时，避免 go.php/站源慢请求把「读取详情」卡死
     let d;
     try{
+      // 采集站（maccms）详情含回搜兜底，给更长的超时，避免被判超时后空集降级成网盘
+      const _detTimeoutMs=(v&&(v._maccms||String(v.href||'').indexOf('maccms://')===0))?22000:12000;
       d=await Promise.race([
         parseDetail(v),
-        new Promise((_,rej)=>setTimeout(()=>rej(new Error('详情超时，请重试')),12000))
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('详情超时，请重试')),_detTimeoutMs))
       ]);
     }catch(eTimeout){
       // 超时仍尽量用卡片自带信息出壳，网盘留给盘搜
@@ -12627,6 +12654,15 @@ function _normPanType(p){
     }
     async function ensurePlayReady(panListFromSearch){
       if(_currentDetailItem!==v) return;
+      // 0-) 纯在线采集站（360资源等 maccms）：站源没取到集数时，绝不用盘搜静默顶替。
+      //     否则同一个片名会被匹配成毫不相干的网盘资源（现象：从观看记录点开却播夸克网盘）。
+      const _onlineOnlySite=!!(v&&(v._maccms||String(v.href||'').indexOf('maccms://')===0
+        ||(function(){ const so=SITES.find(x=>x.id===v.siteId); return !!(so&&so.onlineOnly); })()));
+      if(_onlineOnlySite && !(d.pans&&d.pans.length)){
+        try{ if(typeof toast==='function') toast('站源没取到集数，请返回重试'); }catch(eT){}
+        refreshPlayBtn(false);
+        return;
+      }
       // 0) 在线直链（麻豆/瓜子等）：详情已预解析；若已有续播目标则保留
       const onlineHit=(d.pans||[]).find(p=>p&&p.url&&(p._online||p._hongguo||p._huangdou||p._huangguoai||p._manju||p._jinpai||p._jg||p._jinguo||p.type==='最高画质'||p.type==='在线'||/\.m3u8(\?|$)/i.test(String(p.url||''))||/^huangguoai-play:\/\//i.test(String(p.url||''))));
       if(onlineHit){

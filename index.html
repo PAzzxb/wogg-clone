@@ -9,7 +9,17 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover,interactive-widget=resizes-content" data-page-node-id="8tzojutwqoJmZpr4GHP5KL">
 <title>玩偶聚合 WebHome</title>
 
-  <link rel="stylesheet" href="style.css?v=20261026b">
+  <script>
+  /* 缓存破坏：App 的 WebView 会把 app.js / style.css 长时间缓存住，
+     造成「线上已更新、App 里还是旧版」。这里按小时生成版本号注入资源地址，
+     保证至少每小时重新拉一次；WO_BUILD_BASE 用于人工发版时兜底 bump。 */
+  window.__WO_BUILD_BASE__='20261022c';
+  (function(){
+    var d=new Date(), p=function(n){return ('0'+n).slice(-2)};
+    window.__WO_BUILD__=window.__WO_BUILD_BASE__+'-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+p(d.getHours());
+    document.write('<link rel="stylesheet" href="style.css?v='+window.__WO_BUILD__+'">');
+  })();
+  </script>
 <!-- Nostr 是 TMDB 元数据源，详情页没有网盘/播放条目，隐藏其「资源」页签，默认落到「盘搜」 -->
 <style id="nostr-detail-resource-visibility">.nostr-resource-hidden{display:none!important}</style> 
 </head>
@@ -143,6 +153,8 @@
         <button class="custom-modal-btn accent" id="siteDomainOk" type="button" data-page-node-id="i2GlWCVyvNq44XMBAU8gSM">保存</button>
       </div>
     </div>
+    <div id="woBuildInfo" style="margin-top:10px;text-align:center;font-size:11px;color:rgba(255,255,255,.42);letter-spacing:.02em"></div>
+    <script>(function(){var e=document.getElementById('woBuildInfo');if(e)e.textContent='版本 '+window.__WO_BUILD__;})();</script>
   </div>
 </div>
 <!-- Emby 风格全屏海报背景：独立于 sheet（放在 sheet 外），避免 sheet 的 transform 让 fixed 失效 -->
@@ -162,6 +174,6 @@
 </div>
 
 
-  <script src="app.js?v=20261026b"></script>
+  <script>document.write('<script src="app.js?v='+(window.__WO_BUILD__||'20261022c')+'"><\/script>');</script>
 </body>
 </html>
