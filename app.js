@@ -174,6 +174,7 @@ window.addEventListener('popstate', function() {
   if ($('#sheet').classList.contains('active')) {
     _doCloseSheet();
     _ensureHome();
+    try{ _flushHistDirty(); }catch(e){}
     return;
   }
   // sheet 还未 active（openDetail 极速返回），但 detHeroBg 可能已 show，需清理
@@ -1201,6 +1202,8 @@ function addHistory(item){
   historyList.unshift(merged);
   if(historyList.length>60) historyList.length=60;
   saveHistory();
+  // 实时同步：正停留在「最近观看/浏览历史」页时立刻刷新，不退出 App 也能看到刚看的那条
+  try{ syncHistView(); }catch(e){}
 }
 /** 记录在线源观看到第几集（瓜子/金牌等） */
 function markHistoryProgress(item, p){
@@ -1320,22 +1323,114 @@ function deleteHistory(item){
   saveHistory();
   // 正在浏览历史分类：就地重渲染（延后一帧，避免手指仍按住时同步拆除被触摸卡片残留 :active 态）
   if(content.dataset.mode==='category' && (activeCat==='history'||activeCat==='history_all')){
-    const all=activeCat==='history_all'||(typeof getNavMode==='function'&&getNavMode()==='dock');
-    const hList=all?historyList.slice():historyList.filter(x=>x.siteId===activeSite);
-    status.textContent=(all?'最近观看 · ':'浏览历史 · ')+hList.length+' 条';
     requestAnimationFrame(()=>{
-      if(activeCat==='history'||activeCat==='history_all'){
-        _aggSearchRender=!!all;
-        renderGrid(hList,false);
-        _aggSearchRender=false;
-        content.dataset.mode='category';
-      }
+      if(activeCat==='history'||activeCat==='history_all') renderHistView();
     });
   }else{
     [...content.querySelectorAll('.card')].forEach(c=>{ if(c.dataset.href===item.href) c.remove(); });
   }
+  try{ syncHistoryPill(); }catch(e){}
   return true;
 }
+
+/* ===== 观看记录：实时同步 / 单条删除 / 一键清空 ===== */
+let _histClearArmed=0, _histClearTimer=0;
+function isHistView(){
+  try{ return !!_histMode && !!content && content.dataset.mode==='category'; }catch(e){ return false; }
+}
+// nostr 首页的「最近观看」tab 与底坞 pill 都展示全站记录；其余场景只看当前站
+function histViewAll(){ return (activeCat==='history_all')||(activeSite==='nostr'); }
+function histViewList(){
+  const all=histViewAll();
+  const site=activeSite||'';
+  return {all:all, list:all?historyList.slice():(site?historyList.filter(x=>x.siteId===site):historyList.slice())};
+}
+// 状态栏：条数 + 「清空」按钮（两次点击确认，兼容 App webview 无 window.confirm）
+function setHistoryStatus(all,len){
+  if(!status) return;
+  status.textContent=(all?'最近观看 · ':'浏览历史 · ')+len+' 条';
+  if(len>0){
+    const b=document.createElement('button');
+    b.type='button'; b.className='hist-clear';
+    b.textContent=_histClearArmed?'确认清空？':'清空';
+    if(_histClearArmed) b.classList.add('is-armed');
+    b.addEventListener('click',function(e){
+      e.stopPropagation();
+      if(!_histClearArmed){
+        _histClearArmed=1;
+        try{ setHistoryStatus(all,len); }catch(e2){}
+        clearTimeout(_histClearTimer);
+        _histClearTimer=setTimeout(function(){
+          _histClearArmed=0;
+          try{ const v=histViewList(); setHistoryStatus(v.all,v.list.length); }catch(e3){}
+        },3500);
+        return;
+      }
+      clearTimeout(_histClearTimer); _histClearArmed=0;
+      clearHistory(all);
+    });
+    status.appendChild(b);
+  }
+}
+function renderHistView(){
+  // 作废在飞的分类/搜索请求，避免它们返回后把历史列表覆盖掉
+  try{ _searchGen++; _catGen++; _catSnapshot=null; }catch(e){}
+  const v=histViewList();
+  // 渲染期置标志：activeCat 可能被 chips/切站逻辑改写，卡片是否带删除按钮以本标志为准
+  _histRender=true; _histMode=true;
+  try{
+    _aggSearchRender=!!v.all;
+    renderGrid(v.list,false);
+  }finally{ _histRender=false; }
+  content.dataset.mode='category';
+  setHistoryStatus(v.all,v.list.length);
+}
+let _histDirty=false;
+// 正在渲染历史/最近观看网格：card() 据此给卡片加「删除」按钮与「看到第 N 集」
+let _histRender=false;
+// 当前处于历史/最近观看视图（不依赖 activeCat，避免被 chips 锁定逻辑改写后误判）
+let _histMode=false;
+/** 增删记录后：若正停留在历史视图就就地刷新 —— 不退出 App 也能立刻看到刚看的那条 */
+function syncHistView(){
+  try{ syncHistoryPill(); }catch(e){}
+  if(!isHistView()) return false;
+  // 详情正开着：不重建背景网格（会打断滚动位置），标记脏，等返回列表时再刷新
+  let detailOpen=false;
+  try{ const sh=$('#sheet'); detailOpen=!!(sh&&sh.classList.contains('active')); }catch(e){}
+  if(detailOpen){ _histDirty=true; return false; }
+  try{ requestAnimationFrame(function(){ if(isHistView()) renderHistView(); }); }catch(e){}
+  return true;
+}
+/** 从详情返回列表后：补刷新历史视图（详情期间新增/删除的记录） */
+function _flushHistDirty(){
+  if(!_histDirty) return;
+  _histDirty=false;
+  try{
+    if(isHistView()){
+      const v=histViewList();
+      _aggSearchRender=!!v.all;
+      renderGrid(v.list,false);
+      _aggSearchRender=false;
+      content.dataset.mode='category';
+      setHistoryStatus(v.all,v.list.length);
+    }
+  }catch(e){}
+}
+/** 一键清空：all=true 清全部；否则只清当前站 */
+function clearHistory(all){
+  const site=activeSite||'';
+  if(all!==false||!site){ historyList.length=0; }
+  else{ for(let i=historyList.length-1;i>=0;i--){ if(historyList[i]&&historyList[i].siteId===site) historyList.splice(i,1); } }
+  saveHistory();
+  renderHistView();
+  toast(all!==false?'已清空全部观看记录':'已清空本站观看记录');
+}
+// 跨标签/多窗口同步：另一页面写入后本页立即跟随
+window.addEventListener('storage',function(e){
+  if(!e||e.key!==STORAGE_KEY_HIST) return;
+  try{ historyList=JSON.parse(localStorage.getItem(STORAGE_KEY_HIST)||'[]'); }catch(err){ return; }
+  syncHistView();
+});
 
 function esc(s){return String(s||'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'"'}[c]))}
 function clean(s){return String(s||'').replace(/\s+/g,' ').trim()}
@@ -2260,8 +2355,11 @@ function bindNavHScrolls(){
 function renderChips(){
   let s=site();
   const cats=effCats(s);
+  // 历史/最近观看视图：activeCat 是 history(_all)，不能锁回第一个真实分类，
+  // 否则卡片渲染与「新增/删除后自动刷新」的判定都会错乱。
+  const _inHist=(_histMode||activeCat==='history'||activeCat==='history_all');
   // 无匹配 tab 时强制锁到第一个有效分类（切站源空加载根因）
-  try{ ensureActiveCatLocked(s); }catch(e0){
+  try{ if(!_inHist) ensureActiveCatLocked(s); }catch(e0){
     if(!activeCat&&cats[0]) activeCat=resolveCat(s,cats[0][0]);
   }
   const grp=catGroupOf(s,activeCat);
@@ -2278,8 +2376,8 @@ function renderChips(){
     b.classList.toggle('drop-open', b.dataset.grp===parentGrp);
   });
   let act=chips.querySelector('.chip.active');
-  // 仍无高亮：兜底点亮第一个芯片并同步 activeCat
-  if(!act && cats[0]){
+  // 仍无高亮：兜底点亮第一个芯片并同步 activeCat（历史视图跳过，避免把 activeCat 改掉）
+  if(!act && !_inHist && cats[0]){
     activeCat=resolveCat(s,cats[0][0]);
     const g2=catGroupOf(s,activeCat);
     chips.innerHTML=cats.map(c=>{
@@ -2371,7 +2469,9 @@ function activateCategory(id,slideDir){
   if(id==null)return;
   _catActive=true;
   id=resolveCat(site(),id);   // 分组（电影/剧集）→ 第一个子分类，避免出现空列表
-  activeCat=id;page=1;_pendingSlide=slideDir||null;renderChips();
+  activeCat=id;page=1;_pendingSlide=slideDir||null;
+  _histMode=(id==='history'||id==='history_all');
+  renderChips();
   try{ setMainScrollY(0); }catch(e){}
   if(window._backTopReset) try{ _backTopReset(); }catch(e){}
   if(id==='history'||id==='history_all'){
@@ -2379,12 +2479,7 @@ function activateCategory(id,slideDir){
     // Nostr 首页的「最近观看」tab 展示【全站】所有观看记录；其余站点分类栏无此 tab（底坞 pill 兜底）
     const all=(id==='history_all')||(activeSite==='nostr');
     const site=activeSite||'';
-    const hList=all?historyList.slice():(site?historyList.filter(x=>x.siteId===site):historyList.slice());
-    _aggSearchRender=!!all;
-    renderGrid(hList,false);
-    _aggSearchRender=false;
-    content.dataset.mode='category';
-    status.textContent=(all?'最近观看 · ':'浏览历史 · ')+hList.length+' 条';
+    renderHistView();
     try{ syncHistoryPill(); }catch(e){}
   }
   else if(id==='fav'){_searchGen++;_catGen++;_catSnapshot=null;activeCat=resolveCat(site(),firstRealCat(effCats(site())));renderChips();loadCategory();try{syncHistoryPill()}catch(e){}return}
@@ -2424,6 +2519,15 @@ function card(v,i){
   const srcLine = multi ? `<div class="srcline">${esc(siteNames.join(' · '))}</div>` : '';
   // 左下角站源角标只随聚合搜索结果出现，普通卡片不输出
   const badgeHtml = _aggSearchRender ? `<span class="badge">${esc(badgeText)}</span>` : '';
+  // 历史/最近观看视图：卡片右上角给一个「删除这条记录」按钮
+  const _isHistCard = _histRender || activeCat==='history' || activeCat==='history_all';
+  const histDel = _isHistCard
+    ? '<button class="hist-del" type="button" aria-label="删除这条记录" title="删除这条记录">×</button>' : '';
+  // 历史视图：显示看到第几集（进度随播放实时写入 historyList，进页面即最新）
+  let _epName = String(v._lastEpName||'').trim();
+  if(!_epName && v._lastEpIndex!=null) _epName='第'+(Number(v._lastEpIndex)+1)+'集';
+  const histEp = (_isHistCard && _epName)
+    ? '<div class="hist-ep">看到 '+esc(_epName.replace(/^看到/,''))+'</div>' : '';
   return`
 <article class="card" data-i="${i}" data-href="${esc(v.href)}">
   <div class="poster">
@@ -2454,11 +2558,13 @@ function card(v,i){
     })()}
     ${statusTag}
     ${badgeHtml}
+    ${histDel}
     <span class="source-badge"></span>
   </div>
   <div class="meta">
     <div class="name">${esc(stripTitleNoise(v.title||''))}</div>
     ${srcLine}
+    ${histEp}
   </div>
 </article>`
 }
@@ -2505,6 +2611,19 @@ function _markImgLoaded(img){
 }
 function _onContentActivate(e){
   const isKey=e.type==='keydown';
+  // 历史视图：卡片右上角「×」= 删除该条记录（不进详情）
+  if(!isKey && e.target && e.target.closest){
+    const del=e.target.closest('.hist-del');
+    if(del){
+      e.stopPropagation(); e.preventDefault();
+      const cEl=del.closest('.card')||del.closest('.list-row');
+      const i=parseInt(cEl&&cEl.dataset?cEl.dataset.i:NaN);
+      const v=(!isNaN(i)&&last)?last[i]:null;
+      if(v){ deleteHistory(v); toast('已删除该条记录'); }
+      else{ try{ cEl.remove(); }catch(e2){} }
+      return;
+    }
+  }
   const t=isKey?e.target:(e.target&&e.target.closest?e.target.closest('.card,.list-row'):null);
   if(!t) return;
   if(isKey && !(e.key==='Enter'||e.key===' ')) return;
@@ -6590,6 +6709,8 @@ async function loadCategory(){
   _searchGen++;   // 离开搜索结果页：旧 search() 哪怕还在后台跑，结果回来了也不再生效
   _reqGen++;      // 作废仍在重试的旧请求链：它们回来后不再改写状态栏（修复切源后状态栏卡在旧源URL）
   const gen=++_catGen;   // 本次分类请求的代际号：之后任何「又切了别的分类」都会让它失效，慢请求晚到不再覆盖新内容
+  // 历史/最近观看视图期间：任何迟到的分类请求都不得覆盖历史列表（否则看记录会被分类卡片冲掉）
+  if(_histMode) return;
   try{ _posterEnhGen++; }catch(e){}  // 立刻作废上一批海报增强，防止串贴
   try{ setMainScrollY(0); }catch(e){}
   if(window._backTopReset) try{ _backTopReset(); }catch(e){}
@@ -13739,12 +13860,7 @@ function openHistoryAll(e){
   try{ renderChips(); }catch(err){}
   // 直接走 activate 逻辑
   _searchGen++;_catGen++;_catSnapshot=null;
-  const hList=historyList.slice();
-  _aggSearchRender=true;
-  renderGrid(hList,false);
-  _aggSearchRender=false;
-  content.dataset.mode='category';
-  status.textContent='最近观看 · '+hList.length+' 条';
+  renderHistView();
   syncHistoryPill();
 }
 (function(){

@@ -3703,3 +3703,31 @@ body.sheet-open #backTop{opacity:0!important;pointer-events:none!important}
 #browserHlsMask .bhp-ep.on{background:rgba(255,255,255,0.18);color:#fff;font-weight:700}
 #browserHlsMask .bhp-close{position:absolute;top:calc(var(--safe-top,0px) + 14px);right:16px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;border:none;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 #browserHlsMask .bhp-tip{color:rgba(255,255,255,.55);font-size:12px;margin-top:8px;text-align:center}
+
+/* ===== 观看记录管理：状态栏「清空」+ 卡片单条删除 ===== */
+.hist-clear{
+  -webkit-appearance:none;appearance:none;
+  margin-left:10px;padding:3px 10px;border-radius:999px;
+  font-size:11px;font-weight:600;line-height:1.4;
+  color:#ff9aa2;background:rgba(255,90,110,.12);
+  border:1px solid rgba(255,90,110,.32);
+  cursor:pointer;
+}
+.hist-clear.is-armed{color:#fff;background:rgba(255,90,110,.88);border-color:rgba(255,90,110,.95)}
+.hist-del{
+  position:absolute;top:6px;left:6px;z-index:4;
+  width:26px;height:26px;border-radius:50%;padding:0;
+  display:-webkit-flex;display:flex;align-items:center;justify-content:center;
+  font-size:17px;line-height:1;font-weight:600;
+  color:#fff;background:rgba(0,0,0,.55);
+  border:1px solid rgba(255,255,255,.28);
+  -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);
+  cursor:pointer;
+}
+.hist-del:active{-webkit-transform:scale(.9);transform:scale(.9);background:rgba(255,90,110,.88)}
+.hist-ep{
+  margin-top:3px;
+  font-size:11px;font-weight:600;line-height:1.3;
+  color:#ffcf8f;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
