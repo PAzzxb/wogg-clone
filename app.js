@@ -2092,7 +2092,21 @@ function renderTabs(){
         e.stopPropagation();
         const same=b.dataset.id===activeSite;
         try{ closeNavPanels(); }catch(err){}
-        if(same)return;
+        if(same){
+          // 同站：若正停在观看记录里，退出历史视图并回到本站默认分类（顶栏模式）
+          if(_histMode || activeCat==='history' || activeCat==='history_all'){
+            _histMode=false; _histRender=false;
+            _catActive=true;
+            const sSelf=site();
+            page=1;
+            try{ _searchGen++; _catGen++; _catSnapshot=null; }catch(err){}
+            try{ const c0=firstRealCat(effCats(sSelf)); activeCat=(typeof resolveCat==='function')?resolveCat(sSelf,c0):c0; }
+            catch(err){ activeCat=''; }
+            try{ renderChips(); }catch(err){}
+            loadCategory();
+          }
+          return;
+        }
         _catActive=true;
         const targetId=b.dataset.id;
         const switchGen=++_siteSwitchGen;
@@ -2149,7 +2163,24 @@ function renderTabs(){
       return;
     }
     e.stopPropagation();
-    if(b.dataset.id===activeSite){ collapse(); return; }
+    if(b.dataset.id===activeSite){
+      // 点「当前站」原本只收起坞。但若正停在观看记录里（进历史视图不改 activeSite），
+      // 会被当成同站直接收起、页面还留在观看记录 → 这里显式退出历史视图、回到本站默认分类
+      if(_histMode || activeCat==='history' || activeCat==='history_all'){
+        _histMode=false; _histRender=false;
+        collapse();
+        _catActive=true;
+        const sSelf=site();
+        page=1;
+        try{ _searchGen++; _catGen++; _catSnapshot=null; }catch(err){}
+        try{ const c0=firstRealCat(effCats(sSelf)); activeCat=(typeof resolveCat==='function')?resolveCat(sSelf,c0):c0; }
+        catch(err){ activeCat=''; }
+        try{ renderChips(); }catch(err){}
+        loadCategory();
+        return;
+      }
+      collapse(); return;
+    }
     _catActive=true;
     const targetId=b.dataset.id;
     const switchGen=++_siteSwitchGen;
