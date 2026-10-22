@@ -1525,13 +1525,33 @@ async function req(url,timeoutSec=16,quiet=false,opts){
   if(fm&&fm.req){
     const _init={method:_method,headers:Object.assign({'User-Agent':'Mozilla/5.0','Referer':url}, _extraHeaders),responseType:'text',timeout:timeoutSec};
     if(_method==='POST'){_init.headers['Content-Type']=_init.headers['Content-Type']||'application/x-www-form-urlencoded';_init.body=_body}
-    let r=await fm.req(url,_init);
+    let r;
+    try{
+      // 硬超时兜底：原生桥接偶发挂住永不返回（现象：除 Nostr 外所有站源长期卡在加载中，
+      // 因为 Nostr/TMDB 走浏览器 fetch 不受影响）。超时即判失败，并回落到浏览器通道。
+      r=await Promise.race([
+        fm.req(url,_init),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('桥接请求超时')),(timeoutSec+2)*1000))
+      ]);
+    }catch(eBridge){
+      // 桥接失败/挂死：浏览器通道可用时回落一次，避免整个站源打不开
+      try{
+        // 只允许一次直连尝试：桥接失败时再轮询公共代理会把「站源切换」拖成一分钟转圈
+        const fb=await _reqViaBrowser(url,_method,_body,_extraHeaders,Math.min(timeoutSec,8),false);
+        if(fb!=null&&fb!=='') return fb;
+      }catch(eFb){}
+      throw eBridge;
+    }
     if(!r.ok)throw new Error(r.error||('HTTP '+r.status));
     const body=r.body||'';
 
     return body;
   }
   // ② 没有原生桥接（纯浏览器网页）才走这里：先直连
+  return await _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec);
+}
+async function _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec,allowProxy){
+  if(allowProxy!==false) allowProxy=true;
   try{
     const ac=new AbortController();const t=setTimeout(()=>ac.abort(),timeoutSec*1000);
     let r;
@@ -1552,8 +1572,15 @@ async function req(url,timeoutSec=16,quiet=false,opts){
   }catch(e){
     // 直连被 CORS / 混合内容拦截时，再尝试 CORS 代理（仅浏览器网页场景）
     let lastErr=e.message;
+    if(!allowProxy) throw new Error(lastErr||'请求失败');
     for(const mk of CORS_PROXIES){
-      try{let r=await fetch(mk(url));if(r.ok){let t=await r.text();
+      // 每个代理单独限时：公共代理经常 522/限流且会长时间不响应，
+      // 不设上限的话一次「桥接失败回落」能把站源切换拖成永久转圈
+      try{
+        const _ac=new AbortController(); const _pt=setTimeout(()=>_ac.abort(),8000);
+        let r;
+        try{ r=await fetch(mk(url),{signal:_ac.signal}); }finally{ clearTimeout(_pt); }
+        if(r.ok){let t=await r.text();
         if(CF_PROXY && _isCfChallenge(t)) return await cfReq(url,timeoutSec);
         if(t)return t}lastErr='HTTP '+r.status}
       catch(err){lastErr=err.message}
@@ -2055,7 +2082,11 @@ async function ensureCats(s){
   if(s.type==='flarum'||s.noAutoCats){ CATS_CACHE[s.id]=s.cats; return s.cats; }
   if(s.id==='fangkong'||s.listStyle==='list'){ CATS_CACHE[s.id]=s.cats; return s.cats; }  // 放空等列表站：固定「最近」
   try{
-    const r=await get(s,'/');
+    // 硬超时：分类探测只是「锦上添花」，不能因为首页请求慢/挂住就把整个站源切换卡死
+    const r=await Promise.race([
+      get(s,'/'),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('分类探测超时')),10000))
+    ]);
     let cats=parseNavCats(doc(r.html));
     if(s.id==='huajuan'){
       cats=cats.map(c=>[c[0],stripHuajuanPrefix(c[1])]).filter(c=>c[1]);
