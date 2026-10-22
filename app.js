@@ -11743,8 +11743,9 @@ async function _loadDetailContent(v){
       ? panSearchWithRetry(_earlyPanKw).catch(function(){return []})
       : Promise.resolve([]);
     // 觅盘同步预启动（与详情解析 / 盘搜并行）
+    // 注意：错误不能吞成空数组——否则用户只看到「未匹配到」而看不到真正原因（如浏览器 CORS 限制）
     const _earlyMipanPromise=_earlyPanKw
-      ? mipanSearch(_earlyPanKw).catch(function(){return []})
+      ? mipanSearch(_earlyPanKw).then(function(l){return l}).catch(function(e){ return {__err:e&&e.message||'网络错误'}; })
       : Promise.resolve([]);
     // TMDB 高清海报与详情页解析并发拉取，不先铺站源模糊图
     const _detYear=extractYearStrict(v)||extractYear(v)||'';
@@ -12442,6 +12443,11 @@ function _normPanType(p){
       _earlyMipanPromise.then(function(list){
         if(tk!==_mipanToken) return;
         if(_currentDetailItem!==v) return;
+        // 透出真实失败原因（如浏览器端跨域限制 → 提示用 App）
+        if(list&&list.__err){
+          mipanBox.innerHTML='<div class="pan-search-status">觅盘匹配失败：'+esc(list.__err)+'</div>';
+          return;
+        }
         renderMipanBox(mipanBox,list||[]);
       }).catch(function(e){
         if(tk!==_mipanToken) return;
@@ -12777,14 +12783,15 @@ async function panReq(path,body){
   const url=panApi(path);
   const fm=await fmReady();
   if(fm&&fm.req){
-    let r=await fm.req(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),responseType:'json',timeout:12});
+    // 盘搜服务端聚合实测约 20s（333 条全量合并），12s 必超时；放到 30s 一次拿全
+    let r=await fm.req(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),responseType:'json',timeout:30});
     if(!r.ok)throw new Error(r.error||('HTTP '+r.status));
     return typeof r.body==='string'?JSON.parse(r.body):r.body;
   }
   // 浏览器直连必须带超时：POST 被 CORS 拦截时请求会永久挂起，
   // 导致详情页面一直显示「正在聚合搜索网盘…」而再也不更新（App 内走 fm.req 本身有超时）。
   const ctl=typeof AbortController!=='undefined'?new AbortController():null;
-  const timer=ctl?setTimeout(()=>ctl.abort(),12000):null;
+  const timer=ctl?setTimeout(()=>ctl.abort(),25000):null;
   try{
     let resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl?ctl.signal:undefined});
     if(!resp.ok)throw new Error('HTTP '+resp.status);
@@ -12795,7 +12802,16 @@ async function panReq(path,body){
   }finally{ if(timer)clearTimeout(timer) }
 }
 
+/* 盘搜/觅盘结果缓存：同一关键词 5 分钟内复用，避免重复进详情反复干等 20s+ */
+const _panCache=new Map(), _mipanCache=new Map();
+const PAN_CACHE_TTL=5*60*1000;
+function _cacheGet(map,key){ const hit=map.get(key); if(hit&&Date.now()-hit.t<PAN_CACHE_TTL) return hit.list; map.delete(key); return null; }
+function _cacheSet(map,key,list){ try{ map.set(key,{t:Date.now(),list}); }catch(e){} }
+
 async function panSearch(kw){
+  const _ck='pan:'+String(kw||'').trim();
+  const _hit=_cacheGet(_panCache,_ck);
+  if(_hit) return _hit;
   // 搜索前强制使用全部 TG 频道和全部搜索插件（不受设置页取消勾选影响）
   // 只在搜索提交时同步，避免打开设置时反复刷新造成卡顿。
   try{
@@ -12827,16 +12843,15 @@ async function panSearch(kw){
   out.forEach(x=>{const k=x.type+'|'+panNormUrl(x.url);if(!seen.has(k)){seen.add(k);dedup.push(x)}});
   dedup.forEach((x,i)=>{x._q=panQualityScore(x.title);x._i=i});
   dedup.sort((a,b)=>b._q-a._q||a._i-b._i); // 画质关键词命中多的靠前；命中数相同保持原有相对顺序
+  _cacheSet(_panCache,_ck,dedup);
   return dedup;
 }
 /* 盘搜：无结果或抛错时自动重试一次（间隔约 0.7s） */
 async function panSearchWithRetry(kw){
+  // 只在抛错（网络抖动）时重试一次；无结果不重试——服务端聚合一次约 20s，
+  // 无结果再搜一遍仍是无结果，只会让用户干等一倍时间。
   try{
-    let list=await panSearch(kw);
-    if(list&&list.length) return list;
-    await new Promise(r=>setTimeout(r,700));
-    list=await panSearch(kw);
-    return list||[];
+    return await panSearch(kw)||[];
   }catch(e1){
     await new Promise(r=>setTimeout(r,700));
     try{
@@ -12968,9 +12983,18 @@ async function mipanFetchToken(){
     if(!r.ok) throw new Error(r.error||('token HTTP '+r.status));
     data=typeof r.body==='string'?JSON.parse(r.body):r.body;
   }else{
-    const resp=await fetch(url,{method:'GET',cache:'no-store',headers:{'Accept':'application/json','Referer':'https://www.mipan.so/'}});
-    if(!resp.ok) throw new Error('token HTTP '+resp.status);
-    data=await resp.json();
+    // 浏览器直连：mipan.so 的 CORS allow-headers 不含 X-Mipan-Token，
+    // search 预检必失败；token(GET)可过但 search 过不了，这里仍尝试并给明确报错。
+    const ctl=typeof AbortController!=='undefined'?new AbortController():null;
+    const timer=ctl?setTimeout(()=>ctl.abort(),8000):null;
+    try{
+      const resp=await fetch(url,{method:'GET',cache:'no-store',headers:{'Accept':'application/json','Referer':'https://www.mipan.so/'},signal:ctl?ctl.signal:undefined});
+      if(!resp.ok) throw new Error('token HTTP '+resp.status);
+      data=await resp.json();
+    }catch(e){
+      if(ctl&&e&&e.name==='AbortError') throw new Error('觅盘 token 请求超时');
+      throw new Error('浏览器端无法直连觅盘（跨域限制），请在蜂蜜影视 App 内使用');
+    }finally{ if(timer)clearTimeout(timer) }
   }
   if(!data||!data.token) throw new Error('未获取到觅盘 token');
   return String(data.token);
@@ -12978,6 +13002,9 @@ async function mipanFetchToken(){
 async function mipanSearch(kw){
   const q=String(kw||'').trim();
   if(!q) return [];
+  const _ck='mipan:'+q;
+  const _hit=_cacheGet(_mipanCache,_ck);
+  if(_hit) return _hit;
   let token='';
   try{ token=await mipanFetchToken(); }catch(e){ throw new Error('觅盘鉴权失败：'+(e&&e.message||e)); }
   const url='https://www.mipan.so/api/search';
@@ -12986,20 +13013,22 @@ async function mipanSearch(kw){
   const fm=await fmReady();
   let data;
   if(fm&&fm.req){
-    const r=await fm.req(url,{method:'POST',headers,body,responseType:'json',timeout:18});
+    // 觅盘服务端聚合实测约 7.4s（361 条），18s 偏紧；放到 25s 留足 App 网络余量
+    const r=await fm.req(url,{method:'POST',headers,body,responseType:'json',timeout:25});
     if(!r.ok) throw new Error(r.error||('HTTP '+r.status));
     data=typeof r.body==='string'?JSON.parse(r.body):r.body;
   }else{
     // 同盘搜：浏览器直连必须带超时，否则 CORS 拦截后会永久挂起。
     const ctl=typeof AbortController!=='undefined'?new AbortController():null;
-    const timer=ctl?setTimeout(()=>ctl.abort(),12000):null;
+    const timer=ctl?setTimeout(()=>ctl.abort(),20000):null;
     try{
       const resp=await fetch(url,{method:'POST',headers,body,signal:ctl?ctl.signal:undefined});
       if(!resp.ok) throw new Error('HTTP '+resp.status);
       data=await resp.json();
     }catch(e){
       if(ctl&&e&&e.name==='AbortError')throw new Error('请求超时');
-      throw e;
+      // mipan.so 的 CORS allow-headers 不含 X-Mipan-Token，浏览器预检必失败
+      throw new Error('浏览器端无法直连觅盘（跨域限制），请在蜂蜜影视 App 内使用');
     }finally{ if(timer)clearTimeout(timer) }
   }
   if(data&&typeof data==='object'&&'code' in data&&data.code!==0&&data.code!==200&&!data.results&&!(data.data&&(data.data.results||data.data.merged_by_type))){
@@ -13048,6 +13077,7 @@ async function mipanSearch(kw){
   // 画质关键词打分排序（与盘搜一致）
   out.forEach((x,i)=>{x._q=panQualityScore(x.title);x._i=i});
   out.sort((a,b)=>b._q-a._q||a._i-b._i);
+  _cacheSet(_mipanCache,_ck,out);
   return out;
 }
 function renderMipanBox(box,list){
