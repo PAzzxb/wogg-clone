@@ -5487,7 +5487,8 @@ function maccmsParsePlayUrls(playUrl, playFrom, siteName, refBase){
     });
     if(eps.length){ pans=eps; break; }
   }
-  if(pans.length) pans.forEach(p=>{ p._allEpisodes=pans; });
+  // 带集下标：播放时即使 url/名匹配异常，也能按 _epIndex 精确定位到点选的那一集
+  if(pans.length) pans.forEach((p,pi)=>{ p._allEpisodes=pans; if(p._epIndex==null) p._epIndex=pi; });
   return pans;
 }
 
@@ -9359,7 +9360,8 @@ const isJinpai=!!(p._jinpai || p.siteName==='金牌' || pageUrl.indexOf('jinpai:
         }).filter(e=>e.url&&/^https?:\/\//i.test(e.url));
         if(full.length) epList=full;
       }
-      let idx=_woFindEpisodeIndex(epList, {url:cur, name:p&&p.name, vid:_woEpVid(cur)});
+      let idx=_woFindEpisodeIndex(epList, {url:cur, name:p&&p.name, vid:_woEpVid(cur),
+        index:(p&&p._epIndex!=null)?p._epIndex:null});
       if(idx<0) idx=0;
       p._playIndex=idx;
       if(epList[idx]&&epList[idx].url) u=epList[idx].url;
@@ -9534,7 +9536,8 @@ const isJinpai=!!(p._jinpai || p.siteName==='金牌' || pageUrl.indexOf('jinpai:
           from:String(flagName||meta.siteName||''),
           playIndex:(typeof p._playIndex==="number"?p._playIndex:0),
           position:(typeof p._playIndex==="number"?p._playIndex:0),
-          index:0,
+          // 起始集必须跟实际点选的集走：写死 0 会让壳子忽略 url 直接从第 1 集开始播
+          index:(typeof p._playIndex==="number"?p._playIndex:0),
           episodeIndex:(typeof p._playIndex==="number"?p._playIndex:0)
         };
         if(hdr) payload.headers=hdr;
