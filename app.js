@@ -89,6 +89,23 @@
     var r=e&&e.reason;
     _showErr('Promise: '+((r&&r.message)||r||'未知'));
   });
+
+  /* ⑥ 原生桥接请求用的 UA：必须发完整浏览器 UA。
+     过去发的是裸 'Mozilla/5.0'，米字等站会把它当爬虫直接返回 sgcaptcha 盾页(202)，
+     解析不出任何卡片 → 表现为「卡在黑屏一直刷新」。 */
+  window.__WO_NATIVE_UA__=(typeof navigator!=='undefined'&&navigator.userAgent)||
+    'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
+  /* ⑦ 个别站只放行特定 UA（米字：Chrome 类 UA 一律返加速乐 sgcaptcha 盾页，iPhone Safari 才放行）
+        按请求域名自动切换，其它站仍用 WebView 原生 UA。 */
+  var _IPHONE_UA='Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+  var _UA_OVERRIDES=[/(^|\.)mizixing\.com$/i];
+  window.__woUaForUrl__=function(url){
+    try{
+      var h=(String(url).match(/^https?:\/\/([^\/?#]+)/)||[])[1]||'';
+      for(var i=0;i<_UA_OVERRIDES.length;i++){ if(_UA_OVERRIDES[i].test(h)) return _IPHONE_UA; }
+    }catch(e){}
+    return window.__WO_NATIVE_UA__;
+  };
 })();
 
 
@@ -792,7 +809,11 @@ function openSiteDomainConfig(){
     const resetBtn=document.getElementById('siteDomainReset');
     const syncBtn=document.getElementById('siteDomainSync');
     const netRefreshBtn=document.getElementById('overseasNetRefresh');
+    const proxyInput=document.getElementById('cfProxyInput');
     if(!mask||!input){resolve(false);return}
+    if(proxyInput){
+      try{ proxyInput.value=localStorage.getItem('wo_cf_proxy')||''; }catch(e){}
+    }
     const s=site();
     if(titleEl) titleEl.textContent='设置';
     // 黄豆域名内置隐藏，不在设置中展示/修改
@@ -866,6 +887,13 @@ function openSiteDomainConfig(){
             resolve(false); return;
           }
           saveSiteDomains(s.id, list);
+        }
+        if(proxyInput){
+          try{
+            var _pv=(proxyInput.value||'').trim();
+            if(_pv) localStorage.setItem('wo_cf_proxy',_pv); else localStorage.removeItem('wo_cf_proxy');
+            CF_PROXY=_pv;
+          }catch(e){}
         }
         resolve(true);
       }else resolve(false);
@@ -1532,13 +1560,49 @@ function clean(s){return String(s||'').replace(/\s+/g,' ').trim()}
 function site(){const s=SITES.find(x=>x.id===activeSite); if(s&&!s.hidden)return s; return SITES.find(x=>!x.hidden)||SITES[0]}
 function abs(base,u){try{return new URL(u,base+'/').href}catch(e){return u||''}}
 // 等待原生桥接注入：App 可能在页面脚本之后才注入 window.fm，最多等 4 秒
-let _fmReadyP=null;
+// 除 fm / fongmiBridge 外，部分壳子用别的名字注入桥接（android / jsBridge / webview ...），
+// 这里做一次浅扫描兜底；认不出则按「纯浏览器网页」处理（不再傻等 4 秒）。
+let _fmReadyP=null,_bridgeFound=false;
+function _discoverBridge(){
+  if(_bridgeFound)return _fmReadyP&&_fmReadyP._v;
+  var names=['fm','fongmiBridge','fongmi','webview','webView','android','Android',
+             'jsBridge','JSBridge','jsbridge','bridge','native','nativeApi','nativejs','appJs','app'];
+  for(var i=0;i<names.length;i++){
+    try{ var o=window[names[i]];
+      if(o&&typeof o==='object'&&typeof o.req==='function'){ _bridgeFound=true; return o; }
+    }catch(e){}
+  }
+  try{
+    for(var k in window){
+      var o=window[k];
+      if(!o||typeof o!=='object'||typeof o.req!=='function') continue;
+      if(o.ui||o.res||o.play||o.player||o.video){ _bridgeFound=true; return o; }
+    }
+  }catch(e){}
+  return null;
+}
+/* 桥接返回值归一化：不同壳子返回结构不一样（{ok,body} / {code,data} / {status,response} / 纯字符串），
+   不归一化会让「r.ok 为 undefined」被当成失败 → 所有采集站打不开。 */
+function _normBridgeResp(r){
+  if(r==null) return {ok:false,status:0,body:'',error:'桥接无响应'};
+  if(typeof r==='string') return {ok:true,status:200,body:r,error:''};
+  if(typeof r!=='object') return {ok:false,status:0,body:'',error:'桥接返回类型异常'};
+  var body=(r.body!=null)?r.body:((r.data!=null)?r.data:((r.response!=null)?r.response:((r.content!=null)?r.content:'')));
+  var ok, status;
+  if(r.ok!=null){ ok=!!r.ok; status=(r.status!=null?r.status:200); }
+  else if(r.status!=null){ status=r.status; ok=(status>=200&&status<300); }
+  else if(r.code!=null){ status=r.code; ok=(r.code===200||r.code===1||r.code===0); }
+  else { ok=true; status=200; }
+  var err=r.error||r.message||'';
+  if(!ok&&!err) err='桥接 HTTP '+status;
+  return {ok:ok,status:status,body:body,error:err};
+}
 function fmReady(){
   if(_fmReadyP)return _fmReadyP;
   _fmReadyP=new Promise(res=>{
     // 蜂蜜影视(Fongmi) 部分版本注入的是 window.fongmiBridge 而非 window.fm；
     // 两者都认，否则原生播放分支会被整段跳过、退回 App webview 播放器而打不开。
-    const pick=()=>window.fm||window.fongmiBridge||null;
+    const pick=()=>window.fm||window.fongmiBridge||_discoverBridge();
     if(pick())return res(pick());
     let t=0;const iv=setInterval(()=>{t+=60;if(pick()||t>4000){clearInterval(iv);res(pick())}},60);
   });
@@ -1616,7 +1680,7 @@ async function req(url,timeoutSec=16,quiet=false,opts){
   // ① 原生 App 桥接：直连（等桥接就绪后再判断，避免早于注入时机误走浏览器 fetch）
   const fm=await fmReady();
   if(fm&&fm.req){
-    const _init={method:_method,headers:Object.assign({'User-Agent':'Mozilla/5.0','Referer':url}, _extraHeaders),responseType:'text',timeout:timeoutSec};
+    const _init={method:_method,headers:Object.assign({'User-Agent':(window.__woUaForUrl__?window.__woUaForUrl__(url):(window.__WO_NATIVE_UA__||'Mozilla/5.0')),'Referer':url}, _extraHeaders),responseType:'text',timeout:timeoutSec};
     if(_method==='POST'){_init.headers['Content-Type']=_init.headers['Content-Type']||'application/x-www-form-urlencoded';_init.body=_body}
     let r;
     try{
@@ -1635,6 +1699,7 @@ async function req(url,timeoutSec=16,quiet=false,opts){
       }catch(eFb){}
       throw eBridge;
     }
+    r=_normBridgeResp(r);
     if(!r.ok)throw new Error(r.error||('HTTP '+r.status));
     const body=r.body||'';
 
@@ -1649,7 +1714,7 @@ async function _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec,allowPr
     const ac=new AbortController();const t=setTimeout(()=>ac.abort(),timeoutSec*1000);
     let r;
     try{
-      const h=Object.assign({'User-Agent':'Mozilla/5.0'}, _extraHeaders);
+      const h=Object.assign({'User-Agent':(window.__woUaForUrl__?window.__woUaForUrl__(url):(window.__WO_NATIVE_UA__||'Mozilla/5.0'))}, _extraHeaders);
       // credentials 必须 omit：这些站源（含 51吃瓜）统一返 Access-Control-Allow-Origin: *，
       // 浏览器禁止「凭证请求 + 通配符源」；且本应用无任何 Cookie 读写（document.cookie 零使用），
       // include 没有任何受益方，只会把通配符 CORS 的站全部拦死（纯浏览器网页场景）
@@ -1666,11 +1731,17 @@ async function _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec,allowPr
     // 直连被 CORS / 混合内容拦截时，再尝试 CORS 代理（仅浏览器网页场景）
     let lastErr=e.message;
     if(!allowProxy) throw new Error(lastErr||'请求失败');
+    // 已配置采集代理：公共代理普遍已失效(522/401/429)，别再拿它们浪费 16 秒造成「一直刷新」的假死
+    if(CF_PROXY){
+      try{ return await cfReq(url,timeoutSec); }
+      catch(err){ lastErr=err.message; }
+      throw new Error(lastErr||'采集代理请求失败');
+    }
     for(const mk of CORS_PROXIES){
       // 每个代理单独限时：公共代理经常 522/限流且会长时间不响应，
       // 不设上限的话一次「桥接失败回落」能把站源切换拖成永久转圈
       try{
-        const _ac=new AbortController(); const _pt=setTimeout(()=>_ac.abort(),8000);
+        const _ac=new AbortController(); const _pt=setTimeout(()=>_ac.abort(),6000);
         let r;
         try{ r=await fetch(mk(url),{signal:_ac.signal}); }finally{ clearTimeout(_pt); }
         if(r.ok){let t=await r.text();
@@ -1682,7 +1753,10 @@ async function _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec,allowPr
     if(CF_PROXY){
       try{ return await cfReq(url,timeoutSec); }catch(err){ lastErr=err.message; }
     }
-    throw new Error(lastErr||'请求失败');
+    // 没配代理时给明确指引：纯浏览器网页下采集站几乎必被 CORS 拦，别再让用户对着黑屏猜
+    var _cfHint='。采集站需在 App 壳内打开，或在「设置 → 站源域名」底部配置采集代理地址';
+    if(/failed to fetch|networkerror|load failed/i.test(lastErr||'')) lastErr='浏览器直连被拦截(CORS/混合内容)';
+    throw new Error((lastErr||'请求失败')+_cfHint);
   }
 }
 // ===== 可用域名缓存 =====
@@ -1746,7 +1820,8 @@ async function _getInner(site,path,timeoutSec=16,quiet=false,opts){
   // 绝对 URL（例如详情页 href，已经带着真实域名）：不依赖站源域名列表，直接请求一次。
   if(path.startsWith('http')){
     let h=await req(path,timeoutSec,quiet,opts);
-    if(!h||/just a moment|cf-browser|access denied/i.test(h))throw new Error('响应被拦截或为空');
+    if(!h)throw new Error('响应为空');
+    if(/just a moment|cf-browser|cf-chl|challenge-platform|access denied|sgcaptcha/i.test(h))throw new Error('源站被 Cloudflare/加速乐盾拦截（需配置可解盾代理或更换站源）');
     let base=path;try{const u=new URL(path);base=u.protocol+'//'+u.host}catch(e){}
     return{html:h,base}
   }
@@ -1755,7 +1830,8 @@ async function _getInner(site,path,timeoutSec=16,quiet=false,opts){
   const tryOne=async(d,to)=>{
     const base=d.replace(/\/+$/,''),u=base+path;
     let h=await req(u,to,quiet,opts);
-    if(!h||/just a moment|cf-browser|access denied/i.test(h))throw new Error('域名被拦截或无响应');
+    if(!h)throw new Error('域名无响应');
+    if(/just a moment|cf-browser|cf-chl|challenge-platform|access denied|sgcaptcha/i.test(h))throw new Error('源站被 Cloudflare/加速乐盾拦截（需配置可解盾代理或更换站源）');
     // 域名过期/停放/关站页常返回 200，但无站点内容——不能当成功
     if(/domain is expired|your domain is expired|此域名|域名.*过期|停放|出售该域名|parked domain|coming soon|已经关站|站点已关闭|网站已关闭|关站维护/i.test(h)
        && !/module-item|module-search-item|vod\/detail|mac_url|mac_type|a\.card|res-it|宅男网盘|class=\"item\"|data-date|广播剧|fangkong/i.test(h)){
@@ -1784,21 +1860,30 @@ async function _getInner(site,path,timeoutSec=16,quiet=false,opts){
   }
   // ② 没有可用缓存：并发竞速所有域名，谁先成功用谁，并把它记进缓存供下次单连接复用
   return new Promise((resolve,reject)=>{
-    let pending=domains.length,lastErr='',settled=false;
+    let pending=domains.length,lastErr='',settled=false,_cfSeen=false;
     domains.forEach(d=>{
       const base=d.replace(/\/+$/,''),u=base+path;
       req(u,timeoutSec,quiet,opts).then(h=>{
         if(settled)return;
-        if(h&&!/just a moment|cf-browser|access denied/i.test(h)){
+        // 盾页 / 非 HTML 垃圾响应（连接失败的文本、空串等）都判失败，避免把错误文本当成列表页解析出 0 条。
+        // flarum 站走 JSON 接口，不要求 HTML 文档结构。
+        var _cfHit=/just a moment|cf-browser|cf-chl|challenge-platform|access denied|sgcaptcha/i.test(h);
+        var _needDoc=!(site&&site.type==='flarum');
+        var _bad=!h || h.length<32 || _cfHit || (_needDoc && !/<html|<!doctype|<body[\s>]/i.test(h));
+        if(!_bad){
           settled=true;
           if(DOMAIN_CACHE[site.id]!==d){DOMAIN_CACHE[site.id]=d;_saveDomainCache()}
           resolve({html:h,base});
         }
-        else{lastErr='响应被拦截';if(--pending===0&&!settled)reject(new Error(lastErr||'全部域名失败'))}
+        else{
+          if(_cfHit) _cfSeen=true;
+          lastErr=_cfSeen?'源站被 Cloudflare/加速乐盾拦截（需配置可解盾代理或更换站源）':'响应被拦截或为空';
+          if(--pending===0&&!settled)reject(new Error(_cfSeen?'源站被 Cloudflare/加速乐盾拦截（需配置可解盾代理或更换站源）':(lastErr||'全部域名失败')));
+        }
       }).catch(e=>{
         if(settled)return;
         lastErr=e.message;
-        if(--pending===0&&!settled)reject(new Error(lastErr||'全部域名失败'));
+        if(--pending===0&&!settled)reject(new Error(_cfSeen?'源站被 Cloudflare/加速乐盾拦截（需配置可解盾代理或更换站源）':(lastErr||'全部域名失败')));
       });
     });
   });
@@ -5500,7 +5585,7 @@ async function maccmsApi(s, qs){
   // 浏览器网页（非 App）且未配置任何代理时：直连必被 CORS 拦截，再试已失效的公共代理只会长时间
   // 假死（表现为「一直在刷新」）。同步判定（不等待 fmReady 的 4s 探测）后直接快速失败并给明确提示，
   // 不再把请求丢进 req() 的代理轮询。App 内 window.fm 通常早已注入，_fmNow 为真 → 跳过本拦截。
-  const _fmNow=(typeof window!=='undefined')&&(window.fm||window.fongmiBridge);
+  const _fmNow=(typeof window!=='undefined')&&(window.fm||window.fongmiBridge||(typeof _discoverBridge==='function'&&_discoverBridge()));
   if(!_fmNow && !CF_PROXY){
     throw new Error('需在 App 壳内打开，或配置代理（wo_cf_proxy）才能访问该采集源');
   }
