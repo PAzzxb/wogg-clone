@@ -812,7 +812,10 @@ function openSiteDomainConfig(){
     const proxyInput=document.getElementById('cfProxyInput');
     if(!mask||!input){resolve(false);return}
     if(proxyInput){
-      try{ proxyInput.value=localStorage.getItem('wo_cf_proxy')||''; }catch(e){}
+      try{
+        var _pv=localStorage.getItem('wo_cf_proxy');
+        proxyInput.value=(_pv!==null)?_pv:DEFAULT_CF_PROXY;
+      }catch(e){}
     }
     const s=site();
     if(titleEl) titleEl.textContent='设置';
@@ -891,7 +894,8 @@ function openSiteDomainConfig(){
         if(proxyInput){
           try{
             var _pv=(proxyInput.value||'').trim();
-            if(_pv) localStorage.setItem('wo_cf_proxy',_pv); else localStorage.removeItem('wo_cf_proxy');
+            // 始终落库（含空串）：空串 = 用户显式停用代理，避免回退到内置默认值
+            localStorage.setItem('wo_cf_proxy',_pv);
             CF_PROXY=_pv;
           }catch(e){}
         }
@@ -1625,16 +1629,16 @@ const CORS_PROXIES=[
   u=>'https://api.allorigins.win/raw?url='+encodeURIComponent(u),
   u=>'https://api.codetabs.com/v1/proxy/?quest='+encodeURIComponent(u)
 ];
-// ===== CF 绕过代理（可选，默认不启用）=====
-// 玩偶(wogg)等源站在 Cloudflare 五秒盾后：普通 CORS 代理(allorigins/codetabs 是服务端纯 HTTP 代抓)过不了盾。
-// 若你自建了 CF 绕过代理(如 FlareSolverr)，在此填入地址即可让纯浏览器端也能解开 CF、加载这些源。
-// 填法二选一：
-//   A) 简单代理：地址写成 "...?url=" 或含 {url} 占位符的模板，GET 返回 HTML；
-//   B) FlareSolverr：地址以 "/v1" 结尾(如 "https://你的域名:8191/v1")，走 POST JSON 协议。
-// 留空 '' 表示不启用(玩偶仍仅在蜂蜜影视 App 内可用)。
-// 也可不改代码：浏览器控制台执行 localStorage.setItem('wo_cf_proxy','你的地址') 后刷新即可生效。
-let CF_PROXY='';
-try{ const _c=localStorage.getItem('wo_cf_proxy'); if(_c&&_c.trim()) CF_PROXY=_c.trim(); }catch(e){}
+// ===== 采集代理（已内置默认值，开箱即用）=====
+// 采集站(MacCMS/盘搜类)几乎都不返回 CORS 头：纯浏览器/无原生桥接的壳打开时，直连必被跨域策略拦截，
+// 表现为「卡住一直刷新」。因此内置了一个线上采集代理作为默认值，无需任何配置即可正常加载。
+// App 壳内有原生桥接(fm.req)时走系统网络直连，不使用本代理（更快、也保留站点对手机 IP 的放行）。
+// 用户可在「设置 → 站源域名 → 采集代理地址」覆盖；
+// 填法二选一：A) 简单代理 "...?url=" 或含 {url} 占位符；B) FlareSolverr，地址以 "/v1" 结尾走 POST JSON。
+// 在输入框留空并保存 = 显式停用代理（localStorage 记空串）；从未设置过 = 用下面的内置默认值。
+const DEFAULT_CF_PROXY='https://ab88ae64998dcdcff.app.workbuddy.host/?sharecode=AMOBJ3ICYJ';
+let CF_PROXY=DEFAULT_CF_PROXY;
+try{ const _c=localStorage.getItem('wo_cf_proxy'); if(_c!==null) CF_PROXY=_c.trim(); }catch(e){}
 // CF 挑战页识别：命中即说明拿到了 Cloudflare 五秒盾而非真内容
 function _isCfChallenge(t){ return /just a moment|cf-browser|access denied|<title>\s*Just a moment/i.test(t||''); }
 // CF 绕过代理请求：仅当 CF_PROXY 非空时可用，自动识别「简单代理 / FlareSolverr」两种形态
@@ -1693,8 +1697,9 @@ async function req(url,timeoutSec=16,quiet=false,opts){
     }catch(eBridge){
       // 桥接失败/挂死：浏览器通道可用时回落一次，避免整个站源打不开
       try{
-        // 只允许一次直连尝试：桥接失败时再轮询公共代理会把「站源切换」拖成一分钟转圈
-        const fb=await _reqViaBrowser(url,_method,_body,_extraHeaders,Math.min(timeoutSec,8),false);
+        // 桥接失败/挂死：回落浏览器通道。已内置默认采集代理，放行一次代理尝试
+        // （CF_PROXY 存在时代码不会再去轮询公共代理，耗时可控），让桥接坏掉的壳也能打开采集站
+        const fb=await _reqViaBrowser(url,_method,_body,_extraHeaders,Math.min(timeoutSec,8),true);
         if(fb!=null&&fb!=='') return fb;
       }catch(eFb){}
       throw eBridge;
