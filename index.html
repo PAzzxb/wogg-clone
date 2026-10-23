@@ -13,7 +13,7 @@
   /* 缓存破坏：App 的 WebView 会把 app.js / style.css 长时间缓存住，
      造成「线上已更新、App 里还是旧版」。这里按小时生成版本号注入资源地址，
      保证至少每小时重新拉一次；WO_BUILD_BASE 用于人工发版时兜底 bump。 */
-  window.__WO_BUILD_BASE__='20261023g';
+  window.__WO_BUILD_BASE__='20261023h';
   (function(){
     var d=new Date(), p=function(n){return ('0'+n).slice(-2)};
     window.__WO_BUILD__=window.__WO_BUILD_BASE__+'-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+p(d.getHours());
@@ -143,8 +143,8 @@
     
     <div style="font-size:12px;color:var(--muted);margin:4px 0 8px;line-height:1.45" data-page-node-id="FaIjtHmIDnALv1YxzTTEAX">站源域名 · 每行一个域名（含 https://），自上而下优先。保存后立即用新域名访问当前站。<br data-page-node-id="dV8Cc4xuUkEN96jA5uLqiN">也可点「监控同步」从 site.920410.xyz 拉取最新可用域名（会写入输入框，需再点保存）。</div>
     <textarea class="custom-modal-input" id="siteDomainInput" rows="5" style="height:auto;min-height:110px;padding:10px 12px;resize:vertical;font-family:ui-monospace,Menlo,monospace;font-size:13px;line-height:1.45" placeholder="https://example.com&#10;https://backup.example.com" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>
-    <div style="font-size:12px;color:var(--muted);margin:14px 0 8px;line-height:1.45" id="cfProxyHint">采集代理地址（可选）· 不在 App 壳内（例如用普通浏览器打开）时，采集站会被浏览器跨域策略拦截、卡住不刷新；填一个 HTTP 代理即可正常访问。<br>格式：<span style="font-family:ui-monospace,Menlo,monospace">https://代理域名/?url=</span>（留空 = 不使用代理）</div>
-    <input class="custom-modal-input" id="cfProxyInput" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://your-proxy.example.com/?url=">
+    <div style="font-size:12px;color:var(--muted);margin:14px 0 8px;line-height:1.45" id="cfProxyHint">采集代理地址 · <b style="color:var(--fg)">已内置默认代理，开箱即用、无需填写</b>（仅在「非 App 壳」打开时生效；App 壳内走原生桥接直连，更快）。<br>想换自建代理可在此覆盖，格式：<span style="font-family:ui-monospace,Menlo,monospace">https://代理域名/?url=</span>（FlareSolverr 则填到 /v1）；<b style="color:var(--fg)">留空并保存 = 停用代理</b>。</div>
+    <input class="custom-modal-input" id="cfProxyInput" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="已内置默认代理；如需自建代理填 https://代理域名/?url=">
     <div class="custom-modal-actions" style="justify-content:space-between;flex-wrap:wrap;gap:8px" data-page-node-id="fJ5FVM3fs30Mdg8mvtfPKU">
       <div style="display:flex;gap:8px;flex-wrap:wrap" data-page-node-id="HHICyyvyGXCvTHUWzSoa04">
         <button class="custom-modal-btn" id="siteDomainReset" type="button" data-page-node-id="yuKDRArvhGAwxG9nk8qiuW">恢复默认</button>
