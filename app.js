@@ -1642,7 +1642,7 @@ try{ const _c=localStorage.getItem('wo_cf_proxy'); if(_c!==null) CF_PROXY=_c.tri
 // CF 挑战页识别：命中即说明拿到了 Cloudflare 五秒盾而非真内容
 function _isCfChallenge(t){ return /just a moment|cf-browser|access denied|<title>\s*Just a moment/i.test(t||''); }
 // CF 绕过代理请求：仅当 CF_PROXY 非空时可用，自动识别「简单代理 / FlareSolverr」两种形态
-async function cfReq(url, timeoutSec=20){
+async function cfReq(url, timeoutSec=20, opts){
   const _cf=(CF_PROXY||'').trim();
   if(!_cf) throw new Error('未配置 CF 代理');
   const to=(timeoutSec||20)*1000;
@@ -1662,9 +1662,25 @@ async function cfReq(url, timeoutSec=20){
   if(/\{url\}/i.test(_cf)) target=_cf.replace(/\{url\}/i, encodeURIComponent(url));
   else if(/\?url=|&url=/i.test(_cf)) target=_cf+encodeURIComponent(url);
   else { const sep=_cf.includes('?')?'&':'?'; target=_cf+sep+'url='+encodeURIComponent(url); }
+  // 自定义请求头：浏览器 fetch 不能给跨域请求带头，改用查询参数 h_<头名> 交给代理解析透传
+  // （觅盘 mipan.so 的 X-Mipan-Token 鉴权头就是这样过代理的）
+  const _hdrs=(opts&&opts.headers)||{};
+  Object.keys(_hdrs).forEach(function(k){
+    if(!_hdrs[k])return;
+    target+='&h_'+String(k).replace(/-/g,'_')+'='+encodeURIComponent(_hdrs[k]);
+  });
+  let _init=null;
+  if(opts&&opts.method==='POST'){
+    const _b=(opts.body!=null)?opts.body:'';
+    _init={method:'POST',body:(typeof _b==='string')?_b:JSON.stringify(_b)};
+    // 让代理按 JSON 转发 Content-Type（否则 urllib 默认按表单解析）
+    if(!_hdrs['Content-Type']&&!_hdrs['content-type']){
+      target+='&h_Content_Type='+encodeURIComponent('application/json');
+    }
+  }
   const ac=new AbortController();const t=setTimeout(()=>ac.abort(),to);
   try{
-    const r=await fetch(target);
+    const r=await fetch(target,_init||undefined);
     if(r.ok){ const t2=await r.text(); if(t2) return t2; }
     throw new Error('CF 代理返回空/HTTP '+(r&&r.status));
   }finally{clearTimeout(t)}
@@ -1730,7 +1746,7 @@ async function _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec,allowPr
     const dt=await r.text();
     // CF 五秒盾：直连若拿到挑战页(普通 allorigins/codetabs 这类纯 HTTP 代抓过不了 CF)，
     // 且已配置 CF 绕过代理，则改走它求解，跳过无效的普通代理轮询。
-    if(CF_PROXY && _isCfChallenge(dt)) return await cfReq(url,timeoutSec);
+    if(CF_PROXY && _isCfChallenge(dt)) return await cfReq(url,timeoutSec,{method:_method,body:_body,headers:_extraHeaders});
     return dt;
   }catch(e){
     // 直连被 CORS / 混合内容拦截时，再尝试 CORS 代理（仅浏览器网页场景）
@@ -1738,7 +1754,7 @@ async function _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec,allowPr
     if(!allowProxy) throw new Error(lastErr||'请求失败');
     // 已配置采集代理：公共代理普遍已失效(522/401/429)，别再拿它们浪费 16 秒造成「一直刷新」的假死
     if(CF_PROXY){
-      try{ return await cfReq(url,timeoutSec); }
+      try{ return await cfReq(url,timeoutSec,{method:_method,body:_body,headers:_extraHeaders}); }
       catch(err){ lastErr=err.message; }
       throw new Error(lastErr||'采集代理请求失败');
     }
@@ -1750,13 +1766,13 @@ async function _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec,allowPr
         let r;
         try{ r=await fetch(mk(url),{signal:_ac.signal}); }finally{ clearTimeout(_pt); }
         if(r.ok){let t=await r.text();
-        if(CF_PROXY && _isCfChallenge(t)) return await cfReq(url,timeoutSec);
+        if(CF_PROXY && _isCfChallenge(t)) return await cfReq(url,timeoutSec,{method:_method,body:_body,headers:_extraHeaders});
         if(t)return t}lastErr='HTTP '+r.status}
       catch(err){lastErr=err.message}
     }
     // CORS 代理也失败：若配了 CF 绕过代理，最后再试一次(应对「直连因 CORS 报错而非拿到挑战页」的情况)
     if(CF_PROXY){
-      try{ return await cfReq(url,timeoutSec); }catch(err){ lastErr=err.message; }
+      try{ return await cfReq(url,timeoutSec,{method:_method,body:_body,headers:_extraHeaders}); }catch(err){ lastErr=err.message; }
     }
     // 没配代理时给明确指引：纯浏览器网页下采集站几乎必被 CORS 拦，别再让用户对着黑屏猜
     var _cfHint='。采集站需在 App 壳内打开，或在「设置 → 站源域名」底部配置采集代理地址';
@@ -13419,18 +13435,13 @@ async function panReq(path,body){
     if(!r.ok)throw new Error(r.error||('HTTP '+r.status));
     return typeof r.body==='string'?JSON.parse(r.body):r.body;
   }
-  // 浏览器直连必须带超时：POST 被 CORS 拦截时请求会永久挂起，
-  // 导致详情页面一直显示「正在聚合搜索网盘…」而再也不更新（App 内走 fm.req 本身有超时）。
-  const ctl=typeof AbortController!=='undefined'?new AbortController():null;
-  const timer=ctl?setTimeout(()=>ctl.abort(),25000):null;
-  try{
-    let resp=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:ctl?ctl.signal:undefined});
-    if(!resp.ok)throw new Error('HTTP '+resp.status);
-    return await resp.json();
-  }catch(e){
-    if(ctl&&e&&e.name==='AbortError')throw new Error('请求超时');
-    throw e;
-  }finally{ if(timer)clearTimeout(timer) }
+  // 无原生桥接（纯浏览器网页 / 桥接坏掉的壳）：走统一请求通道。
+  // 盘搜服务 CORS 放行 POST，直连能过最好；一旦被拦会自动改走已内置的采集代理
+  // （代理解析 h_ 查询参数透传自定义头），不会再永久挂在「正在聚合搜索网盘…」。
+  const _txt=await req(url,30,true,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(_txt==null||_txt==='')throw new Error('请求失败：代理返回空');
+  try{ return (typeof _txt==='string')?JSON.parse(_txt):_txt; }
+  catch(e){ throw new Error('搜索返回内容异常'); }
 }
 
 /* 盘搜/觅盘结果缓存：同一关键词 5 分钟内复用，避免重复进详情反复干等 20s+ */
@@ -13614,18 +13625,12 @@ async function mipanFetchToken(){
     if(!r.ok) throw new Error(r.error||('token HTTP '+r.status));
     data=typeof r.body==='string'?JSON.parse(r.body):r.body;
   }else{
-    // 浏览器直连：mipan.so 的 CORS allow-headers 不含 X-Mipan-Token，
-    // search 预检必失败；token(GET)可过但 search 过不了，这里仍尝试并给明确报错。
-    const ctl=typeof AbortController!=='undefined'?new AbortController():null;
-    const timer=ctl?setTimeout(()=>ctl.abort(),8000):null;
-    try{
-      const resp=await fetch(url,{method:'GET',cache:'no-store',headers:{'Accept':'application/json','Referer':'https://www.mipan.so/'},signal:ctl?ctl.signal:undefined});
-      if(!resp.ok) throw new Error('token HTTP '+resp.status);
-      data=await resp.json();
-    }catch(e){
-      if(ctl&&e&&e.name==='AbortError') throw new Error('觅盘 token 请求超时');
-      throw new Error('浏览器端无法直连觅盘（跨域限制），请在蜂蜜影视 App 内使用');
-    }finally{ if(timer)clearTimeout(timer) }
+    // 无原生桥接：走统一请求通道。token 是普通 GET，mipan.so 对 GET 放了 CORS，
+    // 直连能过最好；万一被拦也会自动改走内置代理，不再直接判死刑。
+    const _txt=await req(url,12,true,{headers:{'Accept':'application/json','Referer':'https://www.mipan.so/'}});
+    if(_txt==null||_txt==='')throw new Error('觅盘 token 获取失败：返回空');
+    try{ data=(typeof _txt==='string')?JSON.parse(_txt):_txt; }
+    catch(e){ throw new Error('觅盘 token 返回内容异常'); }
   }
   if(!data||!data.token) throw new Error('未获取到觅盘 token');
   return String(data.token);
@@ -13649,18 +13654,12 @@ async function mipanSearch(kw){
     if(!r.ok) throw new Error(r.error||('HTTP '+r.status));
     data=typeof r.body==='string'?JSON.parse(r.body):r.body;
   }else{
-    // 同盘搜：浏览器直连必须带超时，否则 CORS 拦截后会永久挂起。
-    const ctl=typeof AbortController!=='undefined'?new AbortController():null;
-    const timer=ctl?setTimeout(()=>ctl.abort(),20000):null;
-    try{
-      const resp=await fetch(url,{method:'POST',headers,body,signal:ctl?ctl.signal:undefined});
-      if(!resp.ok) throw new Error('HTTP '+resp.status);
-      data=await resp.json();
-    }catch(e){
-      if(ctl&&e&&e.name==='AbortError')throw new Error('请求超时');
-      // mipan.so 的 CORS allow-headers 不含 X-Mipan-Token，浏览器预检必失败
-      throw new Error('浏览器端无法直连觅盘（跨域限制），请在蜂蜜影视 App 内使用');
-    }finally{ if(timer)clearTimeout(timer) }
+    // 无原生桥接：走统一请求通道。mipan.so 的 CORS 不允许 X-Mipan-Token，
+    // 浏览器直连预检必失败，但内置代理解析 h_ 查询参数透传该头，经代理即可正常搜索。
+    const _txt=await req(url,25,true,{method:'POST',headers:headers,body:body});
+    if(_txt==null||_txt==='')throw new Error('请求失败：代理返回空');
+    try{ data=(typeof _txt==='string')?JSON.parse(_txt):_txt; }
+    catch(e){ throw new Error('搜索返回内容异常'); }
   }
   if(data&&typeof data==='object'&&'code' in data&&data.code!==0&&data.code!==200&&!data.results&&!(data.data&&(data.data.results||data.data.merged_by_type))){
     throw new Error(data.message||data.msg||data.error||('业务错误码 '+data.code));
