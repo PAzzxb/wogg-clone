@@ -14247,15 +14247,26 @@ function openBrowserHlsPlayer(title, epList, headers){
       const qEl=mask.querySelector('.bhp-quality');
       if(!qEl) return;
       qEl.innerHTML='';
-      const lvs=hlsObj.levels||[];
+      // 按高度降序：xv 的清单档位顺序是乱的（480p/1080p/360p），下拉里高档在上
+      const lvs=(hlsObj.levels||[]).map(function(lv,i){ return {lv:lv, idx:i}; })
+        .sort(function(a,b){ return (b.lv.height||0)-(a.lv.height||0); });
       const auto=document.createElement('option');
       auto.value='-1'; auto.textContent='自动';
       qEl.appendChild(auto);
-      lvs.forEach(function(lv,i){
+      lvs.forEach(function(en){
+        const lv=en.lv, i=en.idx;
+        const h=lv.height||0;
+        // 优先用清单自带 NAME（xv 提供 "1080p"/"720p"），否则按高度映射标准清晰度名
+        let name=String(lv.name||'').replace(/\s+/g,'');
+        if(!/^\d{3,4}p$/i.test(name)){
+          name = h>=1900?'1080p': h>=1180?'720p': h>=860?'480p': h>=620?'360p': h>=460?'240p': (h?(h+'p'):'');
+        }
+        const bw=lv.bitrate?((' · '+(lv.bitrate/1000000).toFixed(1)+'Mbps')):'';
         const res=(lv.width&&lv.height)?(lv.width+'×'+lv.height):'';
         const o=document.createElement('option');
         o.value=String(i);
-        o.textContent=((lv.name||'')+(res?(' '+res):'')).trim()||('档'+(i+1));
+        o.textContent=(name+bw)||('档'+(i+1));
+        if(res) o.setAttribute('title',res);  // 原始分辨率悬停可见
         qEl.appendChild(o);
       });
       qEl.value='-1';
