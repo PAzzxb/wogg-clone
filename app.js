@@ -9623,7 +9623,7 @@ const isJinpai=!!(p._jinpai || p.siteName==='金牌' || pageUrl.indexOf('jinpai:
         let eu=String(e.url||'').trim().split('@')[0];
         const m=eu.match(/https?:\/\/[^\s$'"]+\.m3u8[^\s$'"]*/i);
         if(m) eu=m[0];
-        return {name:String(e.name||'').replace(/[$#\n\r]/g,' ').trim(), url:eu};
+        return {name:String(e.name||'').replace(/[$#\n\r]/g,' ').trim(), url:eu, mp4:String(e.mp4||e._mp4||'').trim().split('@')[0]};
       }).filter(e=>e.url&&/^https?:\/\//i.test(e.url));
     }
     if(!epList.length){
@@ -9635,7 +9635,7 @@ const isJinpai=!!(p._jinpai || p.siteName==='金牌' || pageUrl.indexOf('jinpai:
       if(p&&p._allEpisodes&&p._allEpisodes.length){
         const full=p._allEpisodes.filter(e=>e&&e.url).map(e=>{
           let eu=String(e.url||'').trim().split('@')[0];
-          return {name:String(e.name||'').replace(/[$#\n\r]/g,' ').trim(), url:eu};
+          return {name:String(e.name||'').replace(/[$#\n\r]/g,' ').trim(), url:eu, mp4:String(e.mp4||e._mp4||'').trim().split('@')[0]};
         }).filter(e=>e.url&&/^https?:\/\//i.test(e.url));
         if(full.length) epList=full;
       }
@@ -11281,14 +11281,15 @@ async function chiguaXVDetail(v){
     if(localVids.length && !(window.fm&&fm.res) && typeof _cfGateUrl==='function'){
       // 浏览器模式：播放地址经采集代理输出（国内直连 xvideos CDN 不通）。
       // App 壳内原生播放器走系统网络直连，不套代理。
-      // 优先 mp4 直链：m3u8 清单里的分片是 CDN 绝对地址，普通转发型代理不重写就会绕过高通失败；
-      // 自建 VPS 代理（随附 xvproxy-server.mjs）会重写 m3u8，两种代理都能播。
+      // HLS 优先：master 清单含多档（实测最高 1080p/3.3Mbps）；页面里的 mp4 直链
+      // 仅 SD（≈854x480），优先 mp4 会把清晰度锁死在 480p。
+      // m3u8 分片是 CDN 绝对地址，普通转发型代理不重写会绕过高通失败——
+      // 播放端对 HLS 加载失败有自动降级 mp4 兜底（见 openBrowserHlsPlayer）。
       try{
         localVids=localVids.map(function(vv){
           const mp4=_cfGateUrl(vv.mp4)||vv.mp4;
           const hls=_cfGateUrl(vv.hls)||vv.hls;
-          const gatedMp4=(mp4&&vv.mp4&&mp4!==vv.mp4);
-          return {url:(gatedMp4?mp4:(hls||mp4||_cfGateUrl(vv.url)||vv.url)), hls:hls, mp4:mp4, poster:vv.poster};
+          return {url:(hls||mp4||_cfGateUrl(vv.url)||vv.url), hls:hls, mp4:mp4, poster:vv.poster};
         });
       }catch(e){}
     }
@@ -14142,6 +14143,7 @@ function openBrowserHlsPlayer(title, epList, headers){
 <button class="bhp-close" type="button" aria-label="关闭">×</button>
 <div class="bhp-title"></div>
 <video id="browserHlsVideo" controls playsinline webkit-playsinline></video>
+<select class="bhp-quality" style="display:none;margin-top:10px;background:rgba(255,255,255,.12);color:#fff;border:none;padding:6px 12px;border-radius:999px;font-size:13px;cursor:pointer;outline:none"></select>
 <div class="bhp-eps"></div>
 <div class="bhp-tip">浏览器直连播放 · 若卡顿请切换节点或使用 App</div>`;
     document.body.appendChild(mask);
@@ -14157,12 +14159,40 @@ function openBrowserHlsPlayer(title, epList, headers){
     if(hls){ try{hls.destroy()}catch(e){} hls=null; }
     try{ video.removeAttribute('src'); video.load(); }catch(e){}
   }
-  function playUrl(url){
+  // 清晰度下拉：master 清单解析后渲染各档（xv 实测含 1080p/3.3Mbps），-1 为 ABR 自动
+  function renderQuality(hlsObj){
+    try{
+      const qEl=mask.querySelector('.bhp-quality');
+      if(!qEl) return;
+      qEl.innerHTML='';
+      const lvs=hlsObj.levels||[];
+      const auto=document.createElement('option');
+      auto.value='-1'; auto.textContent='自动';
+      qEl.appendChild(auto);
+      lvs.forEach(function(lv,i){
+        const res=(lv.width&&lv.height)?(lv.width+'×'+lv.height):'';
+        const o=document.createElement('option');
+        o.value=String(i);
+        o.textContent=((lv.name||'')+(res?(' '+res):'')).trim()||('档'+(i+1));
+        qEl.appendChild(o);
+      });
+      qEl.value='-1';
+      qEl.style.display=lvs.length>1?'':'none';
+      qEl.onchange=function(){
+        try{ hlsObj.currentLevel=Number(qEl.value); }catch(e){}
+      };
+    }catch(e){}
+  }
+  function playUrl(url, fallbackUrl){
     destroyHls();
     if(!url) return;
     if(window.Hls && Hls.isSupported()){
       hls=new Hls({
         enableWorker:true,
+        // 默认带宽估算仅 500kbps，ABR 会长期停在中间档（xv 的 480p/854x480）；
+        // 提高默认估算，播放初期就敢升到 1080p 档
+        abrEwmaDefaultEstimate:8000000,
+        abrEwmaFastVoD:true,
         xhrSetup:function(xhr){
           try{
             if(headers){
@@ -14173,17 +14203,38 @@ function openBrowserHlsPlayer(title, epList, headers){
           }catch(e){}
         }
       });
+      let fellBack=false;
+      const doFallback=function(){
+        if(fellBack||!fallbackUrl) return;
+        fellBack=true;
+        try{ if(hls){ hls.destroy(); hls=null; } }catch(e){}
+        try{
+          const qEl=mask.querySelector('.bhp-quality');
+          if(qEl) qEl.style.display='none';
+          video.removeAttribute('src');
+          video.src=fallbackUrl;
+          video.play().catch(function(){});
+        }catch(e){}
+      };
       hls.loadSource(url);
       hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED,function(){ video.play().catch(()=>{}); });
+      hls.on(Hls.Events.MANIFEST_PARSED,function(){
+        renderQuality(hls);
+        video.play().catch(function(){});
+      });
       hls.on(Hls.Events.ERROR,function(ev,data){
         if(data&&data.fatal){
           console&&console.warn&&console.warn('[hls fatal]',data);
+          // 硬错误（403/404/410、清单解析失败、密钥加载失败）重试无意义 → 降级 mp4 直链。
+          // 普通转发型代理不重写 m3u8 分片时，分片直连 CDN 被拦，走这条兜底。
+          const code=(data.response&&data.response.code)||0;
+          const det=String(data.details||'');
+          if(code===403||code===404||code===410||/MANIFEST|KEY_LOAD/i.test(det)) doFallback();
         }
       });
     }else if(video.canPlayType('application/vnd.apple.mpegurl')){
       video.src=url;
-      video.play().catch(()=>{});
+      video.play().catch(function(){});
     }else{
       alert('当前浏览器不支持 HLS，请使用 Chrome/Safari 或安装原生 App');
     }
@@ -14197,7 +14248,7 @@ function openBrowserHlsPlayer(title, epList, headers){
     btn.onclick=()=>{
       epsEl.querySelectorAll('.bhp-ep').forEach(b=>b.classList.remove('on'));
       btn.classList.add('on');
-      playUrl(ep.url);
+      playUrl(ep.url, ep.mp4||'');
     };
     epsEl.appendChild(btn);
   });
@@ -14210,7 +14261,7 @@ function openBrowserHlsPlayer(title, epList, headers){
     s.onerror=()=>{ alert('加载播放器失败，请检查网络'); };
     document.head.appendChild(s);
   }
-  ensureHls(()=>playUrl(epList[0].url));
+  ensureHls(()=>playUrl(epList[0].url, epList[0].mp4||''));
   mask._destroy=destroyHls;
 }
 function closeBrowserHlsPlayer(){
