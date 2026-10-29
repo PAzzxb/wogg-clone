@@ -11322,13 +11322,38 @@ async function chiguaXVSearch(s,q){
 
 function chiguaXVExtractVideos(html){
   const out=[];
-  const mp4s=[...html.matchAll(/https?:\/\/mp4-cdn77[^\s"<>]*?\.mp4/gi)].map(x=>x[0]);
-  const m3u8s=[...html.matchAll(/https?:\/\/[^\s"<>]*?\.m3u8/gi)].map(x=>x[0]);
-  const n=Math.max(mp4s.length, m3u8s.length);
-  for(let i=0;i<n;i++){
-    const mp4=mp4s[i]||'', hls=m3u8s[i]||'', url=hls||mp4;
-    if(url) out.push({url, hls, mp4, poster:''});
-  }
+  // xv 的 mp4 直链带 ?secure= 签名查询串（防盗链），丢了会 403——正则必须把 query 一起吃掉
+  const grab=function(re){
+    const seen={}, list=[];
+    let m;
+    while((m=re.exec(html))!==null){
+      const u=m[0];
+      if(seen[u]) continue;
+      seen[u]=1;
+      list.push(u);
+    }
+    return list;
+  };
+  const mp4s=grab(/https?:\/\/mp4-cdn77[^\s"'<>]*?\.mp4(?:\?[^\s"'<>]*)?/gi);
+  const m3u8s=grab(/https?:\/\/[^\s"'<>]*?\.m3u8(?:\?[^\s"'<>]*)?/gi);
+  // 同一视频的 mp4/hls CDN 路径含同一个 UUID；页面里同一地址会重复多次
+  // （setVideoUrlLow/High/JSON-LD 三处），按 UUID 归组去重后再配对，
+  // 避免"按下标配对"把重复地址错位成不能播的假集数（正片2-N）。
+  const uuidRe=/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
+  const groups={}, order=[];
+  const add=function(u, kind){
+    const um=uuidRe.exec(u);
+    const key=um?um[0]:('__'+kind+'_'+u.slice(-32));
+    if(!groups[key]){ groups[key]={mp4:'',hls:''}; order.push(key); }
+    if(!groups[key][kind]) groups[key][kind]=u;
+  };
+  mp4s.forEach(function(u){ add(u,'mp4'); });
+  m3u8s.forEach(function(u){ add(u,'hls'); });
+  order.forEach(function(k){
+    const g=groups[k];
+    const url=g.hls||g.mp4;
+    if(url) out.push({url:url, hls:g.hls, mp4:g.mp4, poster:''});
+  });
   return out;
 }
 
@@ -14207,6 +14232,7 @@ function startPanSearch(box,kw,onResult){
 /* ===== 纯浏览器 HLS 播放器（瓜子/麻豆等在线 m3u8）===== */
 function openBrowserHlsPlayer(title, epList, headers){
   if(!epList||!epList.length){ alert('无可用播放地址'); return; }
+  let _bhpUserPicked=false;  // 用户手动选过清晰度后，不再自动强制起播档
   let mask=document.getElementById('browserHlsMask');
   if(!mask){
     mask=document.createElement('div');
@@ -14272,6 +14298,7 @@ function openBrowserHlsPlayer(title, epList, headers){
       qEl.value='-1';
       qEl.style.display=lvs.length>1?'':'none';
       qEl.onchange=function(){
+        _bhpUserPicked=true;
         try{ hlsObj.currentLevel=Number(qEl.value); }catch(e){}
       };
     }catch(e){}
@@ -14313,6 +14340,19 @@ function openBrowserHlsPlayer(title, epList, headers){
       hls.attachMedia(video);
       hls.on(Hls.Events.MANIFEST_PARSED,function(){
         renderQuality(hls);
+        try{
+          // 起播即用最高清晰度档：xv 清单档位顺序是乱的（480p/1080p/360p），按 height 找最高档。
+          // nextLoadLevel 只指定下一加载档、不锁手动档（hls.js 实测：首片即请求最高档子清单），
+          // 之后交还 ABR 自动调节——带宽不足会自动降档，不会一直卡在高档。
+          // 注意不能用 startLevel（首片请求已发出才触发本事件，设了无效）或
+          // nextLevel（会把 manualLevelIndex 置为固定值变成锁档）。
+          // 用户手动选过档则尊重选择，不再强制。
+          if(!_bhpUserPicked){
+            let best=-1, bestH=0;
+            (hls.levels||[]).forEach(function(lv,i){ const h=lv.height||0; if(h>bestH){ bestH=h; best=i; } });
+            if(best>=0){ hls.nextLoadLevel=best; }
+          }
+        }catch(e){}
         video.play().catch(function(){});
       });
       hls.on(Hls.Events.ERROR,function(ev,data){
@@ -14322,7 +14362,13 @@ function openBrowserHlsPlayer(title, epList, headers){
           // 普通转发型代理不重写 m3u8 分片时，分片直连 CDN 被拦，走这条兜底。
           const code=(data.response&&data.response.code)||0;
           const det=String(data.details||'');
-          if(code===403||code===404||code===410||/MANIFEST|KEY_LOAD/i.test(det)) doFallback();
+          if(code===403||code===404||code===410||/MANIFEST|KEY_LOAD/i.test(det)){
+            doFallback();
+          }else{
+            // 网络类 fatal（分片超时/卡死）：先按 hls.js 官方方式恢复媒体错误，
+            // 避免一遇抖动就放弃 HLS 降到 480p 的 mp4 直链；恢复无效会再次触发 ERROR 再降级。
+            try{ hls.recoverMediaError(); }catch(e){ doFallback(); }
+          }
         }
       });
     }else if(video.canPlayType('application/vnd.apple.mpegurl')){
