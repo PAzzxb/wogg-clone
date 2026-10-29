@@ -347,6 +347,7 @@ const MACCMS_SOURCES=[
   {id:'zyhh',name:'豪华资源',apiBase:'https://hhzyapi.com/api.php/provide/vod'},
   {id:'zymd',name:'魔都资源',apiBase:'https://caiji.moduapi.cc/api.php/provide/vod'},
   {id:'zydytt',name:'电影天堂',apiBase:'https://caiji.dyttzyapi.com/api.php/provide/vod'}
+,{id:'xv',name:'XV',noTmdb:true,onlineOnly:true,domains:['https://www.xvideos.com','https://www.xvideos-cdn.com','https://thumb-cdn77.xvideos-cdn.com','https://thumbs-gcore.xvideos-cdn.com','https://mp4-cdn77.xvideos-cdn.com','https://hls-cdn77.xvideos-cdn.com','https://assets-cdn77.xvideos-cdn.com'],noAutoCats:true,categoryUrl:'/{cat}/',searchUrl:'/?k={keyword}',cats:[['hot','热门'],['new','最新'],['Amateur-65',' Amateur'],['Arab-159','阿拉伯'],['Mature-38','成熟'],['Cuckold-237','出轨背叛/火辣妻子'],['Femdom-235','调教'],['Anal-12','肛交'],['Brunette-25','褐发'],['Black_Woman-30','黑人'],['Redhead-31','红发'],['Fucked_Up_Family-81','家庭乱搞'],['Blonde-20','金发'],['Big_Cock-34','巨屌'],['Big_Tits-23','巨乳'],['Big_Ass-24','巨臀'],['Blowjob-15','口交'],['Latina-16','拉丁裔'],['Milf-19','辣妈'],['Gapes-167','裂开'],['Ass-14','美臀'],['Lesbian-26','女同'],['bbw-51','胖女'],['Squirting-56','喷出'],['Fisting-165','拳交'],['Gangbang-69','群交'],['Teen-13','少女'],['Cumshot-18','射颜'],['Cam_Porn-58','摄像头'],['Bi_Sexual-62','双性恋'],['Stockings-28','丝袜'],['Oiled-22','涂油'],['Lingerie-83','性感内衣'],['Asian_Woman-32','亚洲的'],['Interracial-27','异族'],['Indian-89','印度的'],['Creampie-40','中出'],['Solo_and_Masturbation-33','自慰'],['AI-239','AI（人工智能）'],['ASMR-229','ASMR']]}
 ];
 MACCMS_SOURCES.forEach(function(o){
   const root=o.apiBase.replace(/\/api\.php\/provide\/vod.*$/,'');
@@ -6978,6 +6979,7 @@ async function fetchCatList(s,cat,pg){
   if(s.type==='adultx'||(s.id==='madou'&&s.type==='adultx')) return adultxList(s,cat,pg);
   if(s.type==='chigua57'||s.id==='cg57') return chigua57List(s,cat,pg);
   if(s.type==='maccms') return maccmsList(s,cat,pg);
+  if(s.type==='chiguaXV'||s.id==='xv') return chiguaXVList(s,cat,pg);
   const r=await get(s,catUrl(s,cat,pg));
   if(s.type==='flarum') return flarumCards(r.html,s,r.base).slice(0,60);
   const d=doc(r.html);
@@ -11078,6 +11080,242 @@ async function xsiteSearch(s, q){
   return out.slice(0,80);
 }
 
+/* ===================== XV (xvideos.com) 站源 =====================
+ * 站源结构：XV 视频聚合，卡片 #video_<hash>，封面 img[data-src]，
+ * 详情页 h2.page-title / og:image / mp4-cdn77 + hls-cdn77 视频源
+ * CDN 明文图片（无 Referer 校验、CORS *），无需 AES 解密
+ * ============================================================ */
+
+function chiguaXVStripTags(h){ return String(h||'').replace(/<[^>]*>/g,'').replace(/&[a-z#0-9]+;/gi,' ').replace(/\s+/g,' ').trim(); }
+function chiguaXVCleanTitle(t){
+  let s=String(t||'').trim();
+  s=s.replace(/&rsquo;/g,"'").replace(/&nbsp;/g,' ').replace(/&amp;/g,'&');
+  s=s.replace(/&quot;/g,'"').replace(/&#39;/g,"'");
+  s=s.replace(/\s+/g,' ').trim();
+  return s;
+}
+function chiguaXVAbs(base, path){
+  try{
+    if(!path) return '';
+    if(/^https?:\/\//i.test(path)) return path;
+    const b=(base||'https://www.xvideos.com').replace(/\/+$/,'');
+    return path.startsWith('/') ? b+path : b+'/'+path;
+  }catch(e){ return path||''; }
+}
+function chiguaXVGateUrl(url, accept){
+  if(!url) return url;
+  if(/^blob:|^data:/i.test(url)) return url;
+  try{
+    if(window.fm && fm.res){
+      const h={'Accept':accept||'image/*,*/*','User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36','Referer':'https://www.xvideos.com/'};
+      if(accept) h['Accept']=accept;
+      return fm.res(url, { headers: h });
+    }
+  }catch(e){}
+  return url;
+}
+function chiguaXVSafeUrl(u, base){ if(!u) return ''; return /^https?:\/\//i.test(u)?u:chiguaXVAbs(base,u); }
+
+function chiguaXVParseCards(html, s, base){
+  const out=[]; const seen=new Set();
+  const re=/<div\s+id="video_([a-z0-9]+)"[^>]*>([\s\S]*?)(?=<div\s+id="video_[a-z0-9]+"|<\/body|<\/main)/gi;
+  let m;
+  while((m=re.exec(html))){
+    const id=m[1], blk=m[2];
+    const am=blk.match(/href="([^"]*)"/);
+    if(!am) continue;
+    let href=am[1];
+    if(!href||!/\/video\./i.test(href)) continue;
+    href=chiguaXVAbs(base, href);
+    if(seen.has(id)) continue;
+    seen.add(id);
+    let pic='';
+    const cm=blk.match(/data-src="([^"]+)"/);
+    if(cm) pic=cm[1];
+    if(pic && /\.gif(\?|#|$)/i.test(pic)) pic='';
+    let title='';
+    const tm=blk.match(/<p class="title"[^>]*>([\s\S]*?)<\/p>/i);
+    if(tm) title=chiguaXVCleanTitle(chiguaXVStripTags(tm[1]));
+    if(!title) continue;
+    let remark='';
+    const dm=blk.match(/(\d+)\s*分钟/);
+    if(dm) remark=dm[1]+'分钟';
+    out.push({title:title, href:href, pic:pic, remark:remark, _chiguaXVId:id});
+  }
+  return out;
+}
+
+async function chiguaXVList(s,cat,pg){
+  const page=Math.max(1, pg|0);
+  const tid=String(cat||'').trim();
+  let path='/';
+  if(tid && tid!=='home' && tid!=='hot'){
+    if(tid.indexOf('cat:')===0) path='/'+tid.slice(4)+'/';
+    else if(tid==='Amateur-65') path='/c/Amateur-65/';
+    else path='/c/'+tid+'/';
+  }
+  if(page>1){
+    if(tid && tid!=='home' && tid!=='hot'){
+      if(tid.indexOf('cat:')===0) path='/'+tid.slice(4)+'/'+page+'/';
+      else path='/c/'+tid+'/'+page+'/';
+    }else{
+      path='/?k=&page='+page;
+    }
+  }
+  try{
+    const r=await get(s, path);
+    const base=r.base||(s.domains&&s.domains[0])||'https://www.xvideos.com';
+    let list=chiguaXVParseCards(r.html||'', s, base);
+    if(!list.length && page<=1){
+      try{
+        const r2=await get(s, '/');
+        list=chiguaXVParseCards(r2.html||'', s, r2.base||'https://www.xvideos.com');
+      }catch(e2){}
+    }
+    return list||[];
+  }catch(e){
+    const msg=String(e&&e.message||e||'');
+    if(/404|空|无有效|拦截|过期/i.test(msg) || page>1) return [];
+    throw e;
+  }
+}
+
+async function chiguaXVSearch(s,q){
+  const ekw=encodeURIComponent(String(q||'').trim());
+  if(!ekw) return [];
+  const r=await get(s, '/?k='+ekw, 16, true);
+  return chiguaXVParseCards(r.html||'', s, r.base||(s.domains&&s.domains[0])||'https://www.xvideos.com').slice(0,40);
+}
+
+function chiguaXVExtractVideos(html){
+  const out=[];
+  const mp4s=[...html.matchAll(/https?:\/\/mp4-cdn77[^\s"<>]*?\.mp4/gi)].map(x=>x[0]);
+  const m3u8s=[...html.matchAll(/https?:\/\/[^\s"<>]*?\.m3u8/gi)].map(x=>x[0]);
+  const n=Math.max(mp4s.length, m3u8s.length);
+  for(let i=0;i<n;i++){
+    const mp4=mp4s[i]||'', hls=m3u8s[i]||'', url=hls||mp4;
+    if(url) out.push({url, hls, mp4, poster:''});
+  }
+  return out;
+}
+
+async function chiguaXVDetail(v){
+  const s=SITES.find(x=>x.id==='xv')||{name:'XV',domains:['https://www.xvideos.com']};
+  const info={title:(v&&(v.title||v.name))||'',pic:(v&&(v.pic||v._sitePic))||'',desc:'',siteName:s.name||'XV'};
+  const pans=[];
+  const href=(v&&v.href)||'';
+  if(!href) return {info,pans};
+  let pageUrl=href;
+  try{ if(!/^https?:\/\//i.test(pageUrl)) pageUrl=chiguaXVAbs('https://www.xvideos.com', pageUrl); }catch(e){}
+  try{
+    const r=await get(s, (function(u){ try{ return new URL(u).pathname+(new URL(u).search||''); }catch(e){ return u; } })(pageUrl)||'/', 14, true);
+    const html=r.html||'';
+    // title
+    let hm=html.match(/<h2 class="page-title"[^>]*>([^<]+)</i);
+    if(hm&&hm[1]) info.title=chiguaXVCleanTitle(chiguaXVStripTags(hm[1]));
+    if(!info.title){
+      const tm=html.match(/"headline"\s*:\s*"([^"]+)"/);
+      if(tm) info.title=chiguaXVCleanTitle(tm[1]);
+    }
+    // poster
+    const pm=html.match(/property="og:image"\s+content="([^"]+)"/i);
+    if(pm&&pm[1]) info.pic=pm[1];
+    if(info.pic){
+      try{ info.pic=chiguaXVGateUrl(info.pic,'image/*,*/*')||info.pic; }catch(e){}
+    }
+    const dm=html.match(/"description"\s*:\s*"([^"]+)"/);
+    if(dm) try{ info.desc=JSON.parse('"'+dm[1]+'"'); }catch(e){ info.desc=dm[1]; }
+
+    const localVids=chiguaXVExtractVideos(html);
+    if(localVids.length){
+      localVids.forEach((vid,i)=>{
+        pans.push(Object.assign({
+          name:i===0?'正片':'正片 '+(i+1),
+          url:vid.url,
+          type:'在线',
+          _online:true,
+          _chiguaXV:true,
+          siteName:s.name||'XV',
+          title:info.title,
+          pageUrl:pageUrl,
+          _hls:vid.hls,
+          _mp4:vid.mp4
+        }, { _allEpisodes:localVids.map((vv,ii)=>({name:ii===0?'正片':'正片 '+(ii+1),url:vv.url,type:'在线',_online:true,_chiguaXV:true,siteName:s.name||'XV',title:info.title,pageUrl:pageUrl,_hls:vv.hls,_mp4:vv.mp4})), _epIndex:i}));
+      });
+    }
+  }catch(eSer){
+    console&&console.warn&&console.warn('[chiguaXV detail]', eSer&&eSer.message);
+  }
+  return {info,pans};
+}
+
+const _xvBlobCache={};
+async function chiguaXVHydrateCovers(root){
+  try{
+    root=root||document;
+    const imgs=[...root.querySelectorAll('img[data-xv-src]')];
+    if(!imgs.length) return;
+    let fm=null;
+    try{ fm=window.fm||(typeof fmReady==='function'?await fmReady():null); }catch(e){}
+    for(const img of imgs){
+      if(img.getAttribute('data-xv-done')==='1' && img.complete && img.naturalWidth>0) continue;
+      const raw=img.getAttribute('data-xv-src');
+      if(!raw) continue;
+      const ok=function(){
+        try{
+          img.setAttribute('data-xv-done','1');
+          img.style.display='';
+          img.style.opacity='1';
+          img.dataset.failed='';
+          const poster=img.closest('.poster');
+          if(poster){
+            const ph=poster.querySelector('.noimg');
+            if(ph) ph.remove();
+            poster.dataset.fb='';
+          }
+        }catch(e){}
+      };
+      if(img.complete && img.naturalWidth>0){ ok(); continue; }
+      try{
+        if(fm&&fm.res){
+          const gated=fm.res(raw,{headers:Object.assign({'Accept':'image/*,*/*','User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36','Referer':'https://www.xvideos.com/'},{'Accept':'image/*,*/*'})});
+          if(gated){
+            const success=await new Promise(function(resolve){
+              const t=setTimeout(function(){ resolve(false); }, 12000);
+              img.addEventListener('load', function(){ clearTimeout(t); ok(); resolve(true); }, {once:true});
+              img.addEventListener('error', function(){ clearTimeout(t); resolve(false); }, {once:true});
+              img.src=gated;
+            });
+            if(success) continue;
+          }
+        }
+        if(fm&&fm.req){
+          if(typeof _xvBlobCache!=='undefined' && _xvBlobCache[raw]){ img.src=_xvBlobCache[raw]; ok(); continue; }
+          const r=await fm.req(raw,{method:'GET',headers:{'Accept':'image/*,*/*','User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36','Referer':'https://www.xvideos.com/'},responseType:'arraybuffer',timeout:20});
+          if(r&&r.ok&&r.body!=null){
+            let body=r.body;
+            if(!(body instanceof ArrayBuffer) && body.buffer) body=body.buffer;
+            const blob=new Blob([body],{type:'image/jpeg'});
+            const bu=URL.createObjectURL(blob);
+            try{ _xvBlobCache[raw]=bu; }catch(e){}
+            img.src=bu;
+            ok();
+          }
+        }
+      }catch(e){}
+    }
+  }catch(e){}
+}
+function isXVItem(v,p){
+  try{
+    if(v&&(v.siteId==='xv'||v._chiguaXVId)) return true;
+    if(p&&(p._xv||p.siteName==='XV')) return true;
+    const href=String((v&&v.href)||(p&&p.pageUrl)||'');
+    if(/xvideos\.com/i.test(href)||/chiguaXV:\/\//i.test(href)) return true;
+  }catch(e){}
+  return false;
+}
+
 async function chigua57List(s,cat,pg){
   const page=Math.max(1, pg|0);
   const tid=String(cat||'hot').trim()||'hot';
@@ -11959,6 +12197,7 @@ async function parseDetail(v){
   if(v&&(v.siteId==='cg51'||v._chigua51Id||(v.href&&String(v.href).indexOf('chigua51://')===0)||(v.href&&/(?:benefit|agency|breathe|cfkhguby)\.[a-z0-9.-]+\/archives\//i.test(String(v.href))))) return chigua51Detail(v);
   // href 形如 maccms://<siteId>/<id>：即使 _maccms 标记丢失（如从观看记录恢复的旧条目）也走采集详情
   if(v&&(v._maccms||String(v.href||'').indexOf('maccms://')===0)) return maccmsDetail(v);
+  if(v&&(v.siteId==='xv'||v._chiguaXVId||(v.href&&String(v.href).indexOf('chiguaXV://')===0)||(v.href&&/xvideos\.com\/video\./i.test(String(v.href))))) return chiguaXVDetail(v);
   if(v&&v.siteId==='nostr'&&v._nostr){
     const n=v._nostr;const date=n.date||v.year||'';
     return {info:{title:v.title||'',pic:v.pic||'',desc:n.overview||'',siteName:'Nostr',year:String(date).slice(0,4),rating:n.rating||0,backdrop:n.backdrop||''},pans:[]};
