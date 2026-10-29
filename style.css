@@ -3758,8 +3758,7 @@ body.sheet-open #backTop{opacity:0!important;pointer-events:none!important}
   position:fixed; left:0; top:0; bottom:0; z-index:140;
   width:min(300px,80vw);
   display:flex; flex-direction:column;
-  background:rgba(18,18,22,.94);
-  -webkit-backdrop-filter:blur(16px); backdrop-filter:blur(16px);
+  background:#131317;
   border-right:1px solid rgba(255,255,255,.08);
   transform:translateX(-102%);
   transition:transform .26s cubic-bezier(.32,.72,.24,1);
@@ -3769,6 +3768,7 @@ body.sheet-open #backTop{opacity:0!important;pointer-events:none!important}
 }
 #catPanel.open{ transform:translateX(0); }
 #catPanel .cp-head{
+  flex:0 0 auto;
   display:flex; align-items:center; justify-content:space-between; gap:8px;
   padding:14px 12px 10px 16px;
   border-bottom:1px solid rgba(255,255,255,.07);
@@ -3787,6 +3787,7 @@ body.sheet-open #backTop{opacity:0!important;pointer-events:none!important}
   padding:10px; display:flex; flex-direction:column; gap:2px;
 }
 #catPanel .cp-item{
+  flex:0 0 auto;
   border:none; text-align:left; cursor:pointer;
   padding:10px 12px; border-radius:10px;
   background:transparent; color:rgba(255,255,255,.82);
