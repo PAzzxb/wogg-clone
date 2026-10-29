@@ -1637,11 +1637,28 @@ const CORS_PROXIES=[
 // 用户可在「设置 → 站源域名 → 采集代理地址」覆盖；
 // 填法二选一：A) 简单代理 "...?url=" 或含 {url} 占位符；B) FlareSolverr，地址以 "/v1" 结尾走 POST JSON。
 // 在输入框留空并保存 = 显式停用代理（localStorage 记空串）；从未设置过 = 用下面的内置默认值。
-const DEFAULT_CF_PROXY='https://ab88ae64998dcdcff.app.workbuddy.host/?sharecode=AMOBJ3ICYJ';
+// 采集代理默认值：玩偶聚合自有的 Cloudflare Worker（xv.noyu.ccwu.cc，/?url= 参数）。
+// 旧默认 ab88ae64998dcdcff.app.workbuddy.host 已失效（WAF 403 + 上游到 xvideos 网络不可达）。
+// 注意：XVIDEOS 拉黑了 Cloudflare 出口 IP，XV 站源需在设置里把代理换成海外 VPS 代理才能抓取。
+const DEFAULT_CF_PROXY='https://xv.noyu.ccwu.cc/?url=';
 let CF_PROXY=DEFAULT_CF_PROXY;
 try{ const _c=localStorage.getItem('wo_cf_proxy'); if(_c!==null) CF_PROXY=_c.trim(); }catch(e){}
 // CF 挑战页识别：命中即说明拿到了 Cloudflare 五秒盾而非真内容
 function _isCfChallenge(t){ return /just a moment|cf-browser|access denied|<title>\s*Just a moment/i.test(t||''); }
+// 把任意 https URL 经「?url= 型采集代理」输出（图片/视频等二进制资源用，<img>/<video> 可直接加载）。
+// 仅当 CF_PROXY 为简单代理形态时可用；FlareSolverr（/v1）不能代理二进制，返回原值。
+function _cfGateUrl(url){
+  try{
+    if(!url || !/^https?:\/\//i.test(url)) return url;
+    const cf=(typeof CF_PROXY!=='undefined'?CF_PROXY:'')||'';
+    if(!cf) return url;
+    if(/\/v1\/?$/i.test(cf) || /flaresolverr/i.test(cf)) return url;
+    if(/\{url\}/i.test(cf)) return cf.replace(/\{url\}/i, encodeURIComponent(url));
+    if(/\?url=|&url=/i.test(cf)) return cf+encodeURIComponent(url);
+    const sep=cf.includes('?')?'&':'?';
+    return cf+sep+'url='+encodeURIComponent(url);
+  }catch(e){ return url; }
+}
 // CF 绕过代理请求：仅当 CF_PROXY 非空时可用，自动识别「简单代理 / FlareSolverr」两种形态
 async function cfReq(url, timeoutSec=20, opts){
   const _cf=(CF_PROXY||'').trim();
@@ -2810,6 +2827,12 @@ function card(v,i){
           // 不用 loading="lazy"：加载时机由 chigua51HydrateAll（视口内立即 + IO）精确管理，
           // lazy 会把「已设好 blob src 但还在视口外」的图拦着不发请求，与预载策略相悖
           return '<img referrerpolicy="no-referrer" data-cg51-src="'+esc(v.pic)+'" onload="window._posterOk&&window._posterOk(this)" onerror="window._posterFail&&window._posterFail(this)">';
+        }
+        if(v.siteId==='xv'||v._chiguaXVId){
+          // XV 封面在 xvideos CDN，国内直连不通：App 壳走 fm.res，浏览器经采集代理输出
+          let src=v.pic;
+          try{ src=(typeof chiguaXVGateUrl==='function'?chiguaXVGateUrl(v.pic,'image/*,*/*'):v.pic)||v.pic; }catch(eG){}
+          return '<img loading="lazy" referrerpolicy="no-referrer" data-xv-src="'+esc(v.pic)+'" src="'+esc(src)+'" onload="window._posterOk&&window._posterOk(this)" onerror="window._posterFail&&window._posterFail(this)">';
         }
         return '<img loading="lazy" referrerpolicy="no-referrer" src="'+esc(v.pic)+'" onload="window._posterOk&&window._posterOk(this)" onerror="window._posterFail&&window._posterFail(this)">';
       }
@@ -11112,6 +11135,11 @@ function chiguaXVGateUrl(url, accept){
       return fm.res(url, { headers: h });
     }
   }catch(e){}
+  // 浏览器（无原生桥接）兜底：经采集代理输出，避免国内直连 xvideos CDN 裂图/超时
+  try{
+    const g=(typeof _cfGateUrl==='function')?_cfGateUrl(url):url;
+    if(g && g!==url) return g;
+  }catch(e){}
   return url;
 }
 function chiguaXVSafeUrl(u, base){ if(!u) return ''; return /^https?:\/\//i.test(u)?u:chiguaXVAbs(base,u); }
@@ -11165,7 +11193,13 @@ async function chiguaXVList(s,cat,pg){
   try{
     const r=await get(s, path);
     const base=r.base||(s.domains&&s.domains[0])||'https://www.xvideos.com';
-    let list=chiguaXVParseCards(r.html||'', s, base);
+    const html=r.html||'';
+    // XVIDEOS 对代理出口 IP 的软封锁：返回 83 字节 "Please visit" 页（HTTP 200，无报错），
+    // 不识别就会静默出空列表。识别后抛出可操作的错误，由上层 toast 提示更换采集代理。
+    if(/please visit/i.test(html) && html.length<600){
+      throw new Error('XV 源站拦截了当前代理出口 IP（请把采集代理换成海外 VPS 代理，见设置 → 站源域名）');
+    }
+    let list=chiguaXVParseCards(html, s, base);
     if(!list.length && page<=1){
       try{
         const r2=await get(s, '/');
@@ -11175,7 +11209,20 @@ async function chiguaXVList(s,cat,pg){
     return list||[];
   }catch(e){
     const msg=String(e&&e.message||e||'');
-    if(/404|空|无有效|拦截|过期/i.test(msg) || page>1) return [];
+    if(/拦截了当前代理出口 IP/.test(msg)) throw e;
+    if((/404|空|无有效|拦截|过期/i.test(msg)) && page<=1){
+      // 分类页被判「无有效内容」时探一次首页：若是源站软封锁代理出口（"Please visit" 页），
+      // 抛出可操作错误，避免所有分类都静默出空列表
+      try{
+        const r2=await get(s,'/',10,true);
+        const h2=(r2&&r2.html)||'';
+        if(/please visit/i.test(h2)&&h2.length<600) throw new Error('XV 源站拦截了当前代理出口 IP（请把采集代理换成海外 VPS 代理，见设置 → 站源域名）');
+      }catch(e2){
+        if(e2&&/拦截了当前代理出口 IP/.test(String(e2.message||''))) throw e2;
+      }
+      return [];
+    }
+    if(page>1) return [];
     throw e;
   }
 }
@@ -11184,7 +11231,11 @@ async function chiguaXVSearch(s,q){
   const ekw=encodeURIComponent(String(q||'').trim());
   if(!ekw) return [];
   const r=await get(s, '/?k='+ekw, 16, true);
-  return chiguaXVParseCards(r.html||'', s, r.base||(s.domains&&s.domains[0])||'https://www.xvideos.com').slice(0,40);
+  const html=r.html||'';
+  if(/please visit/i.test(html) && html.length<600){
+    throw new Error('XV 源站拦截了当前代理出口 IP（请把采集代理换成海外 VPS 代理，见设置 → 站源域名）');
+  }
+  return chiguaXVParseCards(html, s, r.base||(s.domains&&s.domains[0])||'https://www.xvideos.com').slice(0,40);
 }
 
 function chiguaXVExtractVideos(html){
@@ -11226,7 +11277,21 @@ async function chiguaXVDetail(v){
     const dm=html.match(/"description"\s*:\s*"([^"]+)"/);
     if(dm) try{ info.desc=JSON.parse('"'+dm[1]+'"'); }catch(e){ info.desc=dm[1]; }
 
-    const localVids=chiguaXVExtractVideos(html);
+    let localVids=chiguaXVExtractVideos(html);
+    if(localVids.length && !(window.fm&&fm.res) && typeof _cfGateUrl==='function'){
+      // 浏览器模式：播放地址经采集代理输出（国内直连 xvideos CDN 不通）。
+      // App 壳内原生播放器走系统网络直连，不套代理。
+      // 优先 mp4 直链：m3u8 清单里的分片是 CDN 绝对地址，普通转发型代理不重写就会绕过高通失败；
+      // 自建 VPS 代理（随附 xvproxy-server.mjs）会重写 m3u8，两种代理都能播。
+      try{
+        localVids=localVids.map(function(vv){
+          const mp4=_cfGateUrl(vv.mp4)||vv.mp4;
+          const hls=_cfGateUrl(vv.hls)||vv.hls;
+          const gatedMp4=(mp4&&vv.mp4&&mp4!==vv.mp4);
+          return {url:(gatedMp4?mp4:(hls||mp4||_cfGateUrl(vv.url)||vv.url)), hls:hls, mp4:mp4, poster:vv.poster};
+        });
+      }catch(e){}
+    }
     if(localVids.length){
       localVids.forEach((vid,i)=>{
         pans.push(Object.assign({
