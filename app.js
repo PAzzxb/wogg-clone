@@ -11609,7 +11609,11 @@ function chigua51ParseCards(html, s, base){
     const id=am[2];
     if(!id||seen.has(id)) continue;
     seen.add(id);
-    const cm=blk.match(/loadBannerDirect\(\s*'([^']+)'/);
+    // 封面提取：站点 2610 改版后封面从 loadBannerDirect('URL') 改为统一声明式背景加载 z-bg-loader-url="URL"
+    // （image.20260416.js 的 z-bg-loader-url；旧模板仍走 loadBannerDirect，两者都兼容）
+    let cm=blk.match(/z-bg-loader-url="([^"]+)"/);
+    if(!cm) cm=blk.match(/loadBannerDirect\(\s*'([^']+)'/);
+    if(cm && /\.gif(\?|#|$)/i.test(cm[1])) cm=null;   // 广告 gif 封面（x-bg 常见）不作为真实封面
     let title='';
     const tm=blk.match(/<h2 class="post-card-title"[^>]*>([\s\S]*?)<\/h2>/i);
     if(tm) title=chigua51StripTags(tm[1].replace(/<div class="wrap">[\s\S]*?<\/div>/gi,''));
@@ -11756,8 +11760,8 @@ function chigua51CleanBody(html, base){
     const tag=m[1].toLowerCase();
     let inner=m[2]||'';
     inner=inner.replace(/<a\b[^>]*>[\s\S]*?<\/a\s*>/gi,'');                 // 全部外链（广告 + 站内导航）
-    inner=inner.replace(/<img\b(?![^>]*data-xkrkllgl)[^>]*>/gi,'');         // 先删非懒加载图（banner/主题 UI）
-    inner=inner.replace(/<img\b[^>]*data-xkrkllgl="([^"]+)"[^>]*>/gi,'');   // 真图统一抽出至底部图区，段落只留文字
+    inner=inner.replace(/<img\b(?![^>]*(?:data-xkrkllgl|z-image-loader-url))[^>]*>/gi,'');   // 先删非懒加载图（banner/主题 UI）
+    inner=inner.replace(/<img\b[^>]*(?:data-xkrkllgl|z-image-loader-url)="([^"]+)"[^>]*>/gi,''); // 真图统一抽出至底部图区，段落只留文字
     inner=inner.replace(/<(script|style|iframe|object|embed|form|input|button|video|source|audio)\b[\s\S]*?<\/\1\s*>/gi,'')
                .replace(/<\/?(script|style|iframe|object|embed|form|input|button|video|source|audio)\b[^>]*>/gi,'');
     inner=inner.replace(/<\/?(div|span|font|section|figure|figcaption|table|thead|tbody|tr|td|center|small|label|select|option|textarea|dl|dt|dd)\b[^>]*>/gi,'');
@@ -11771,10 +11775,12 @@ function chigua51CleanBody(html, base){
   }
   return outHtml;
 }
-/* 提取正文块全部真图 URL（data-xkrkllgl 为本站真图唯一特征；只取 post-content 内，排除帖外杂图），供底部图区网格展示 */
+/* 提取正文块全部真图 URL（z-image-loader-url 为本站真图唯一特征；旧模板用 data-xkrkllgl，两者都兼容；
+ * 只取 post-content 内，排除帖外杂图），供底部图区网格展示 */
 function chigua51ExtractBodyImgs(html, base){
   const out=[]; const seen=new Set();
-  const re=/<img\b[^>]*data-xkrkllgl="([^"]+)"[^>]*>/gi;
+  // 优先新格式 z-image-loader-url，回退旧格式 data-xkrkllgl
+  const re=/<img\b[^>]*(?:z-image-loader-url|data-xkrkllgl)="([^"]+)"[^>]*>/gi;
   let m;
   const scope=chigua51PostContentSlice(html)||String(html||'');
   while((m=re.exec(scope))){
@@ -11809,14 +11815,20 @@ async function chigua51Detail(v){
       info._cg51Body='<p style="color:var(--muted)">该帖子为推广/引流变现内容，已按规则屏蔽。</p>';
       return {info,pans};
     }
+    // 详情页海报：优先站源 og:image，但站点改版后 og:image 常为 social-default.jpg 默认占位图，
+    // 这种不作海报；改用正文第一张真实图（z-image-loader-url）兜底，避免详情页海报变成默认图
     const og=html.match(/property="og:image"\s+content="([^"]+)"/i);
-    if(og&&!info.pic) info.pic=chigua51Abs(base, og[1]);
-    // 轮播图集：封面（og:image）打头 + 正文配图去重追加（详情内容卡左右滑动看）
+    let ogUrl='';
+    if(og) ogUrl=chigua51Abs(base, og[1]);
+    if(ogUrl && /social-default|default\.(jpe?g|png|webp)|no.?image/i.test(ogUrl)) ogUrl='';
+    // 轮播图集：正文配图 + 封面（og:image 或列表卡 pic）打头，去重追加（详情内容卡左右滑动看）
     info._cg51Imgs=chigua51ExtractBodyImgs(html, base);
     const _carImgs=[];
-    const _coverPic=info.pic||(v&&v.pic)||'';
+    const _coverPic=info.pic||(v&&v.pic)||ogUrl||'';
     if(_coverPic) _carImgs.push(_coverPic);
     (info._cg51Imgs||[]).forEach(function(u){ if(_carImgs.indexOf(u)<0) _carImgs.push(u); });
+    // 海报兜底：info.pic 仍空（无列表卡 pic、无有效 og:image）时，取正文第一张真实图作封面/海报
+    if(!info.pic && _carImgs.length) info.pic=_carImgs[0];
     info._cg51CarImgs=_carImgs;
     // 视频 → 分集（一段一集；单段命名「在线」）
     const vids=chigua51ExtractVideos(html);
