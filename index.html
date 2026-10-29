@@ -13,7 +13,7 @@
   /* 缓存破坏：App 的 WebView 会把 app.js / style.css 长时间缓存住，
      造成「线上已更新、App 里还是旧版」。这里按小时生成版本号注入资源地址，
      保证至少每小时重新拉一次；WO_BUILD_BASE 用于人工发版时兜底 bump。 */
-  window.__WO_BUILD_BASE__='20261029b';
+  window.__WO_BUILD_BASE__='20261029c';
   (function(){
     var d=new Date(), p=function(n){return ('0'+n).slice(-2)};
     window.__WO_BUILD__=window.__WO_BUILD_BASE__+'-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+p(d.getHours());
@@ -176,6 +176,20 @@
 </div>
 
 
+<!-- 左侧分类面板：分类数多的站（XV 48 个等）从顶部横滑改左侧抽屉，可收缩 -->
+<button id="catPanelBtn" type="button" aria-label="分类" title="分类" hidden>
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/>
+  </svg>
+</button>
+<div id="catPanelMask" hidden></div>
+<aside id="catPanel" hidden>
+  <div class="cp-head">
+    <span class="cp-title" id="catPanelTitle">分类</span>
+    <button type="button" class="cp-close" id="catPanelClose" aria-label="收起分类">×</button>
+  </div>
+  <div class="cp-list" id="catPanelList"></div>
+</aside>
   <script>document.write('<script src="app.js?v='+(window.__WO_BUILD__||'20261022c')+'"><\/script>');</script>
 </body>
 </html>

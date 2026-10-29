@@ -1191,6 +1191,86 @@ function openSearchPanelTop(){
   applyNavMode(getNavMode());
 })();
 
+/* ===== 左侧分类面板：分类数多的站（XV 48 个等）替代顶部横滑 ===== */
+/* 触发条件：当前站分类数 > CAT_PANEL_MIN。命中后顶部分类横滑整条让位，
+   改由左缘浮动按钮展开/收起左侧抽屉，点分类即切换并自动收起。 */
+const CAT_PANEL_MIN=12;
+function catPanelNeeded(){
+  try{
+    const s=site(); if(!s) return false;
+    const cats=effCats(s);
+    return (cats||[]).length>CAT_PANEL_MIN;
+  }catch(e){ return false; }
+}
+function applyCatPanelMode(){
+  try{
+    const need=catPanelNeeded();
+    document.documentElement.classList.toggle('cat-panel-on', need);
+    const btn=document.getElementById('catPanelBtn');
+    if(btn) btn.hidden=!need;
+    if(!need) closeCatPanel();
+    else renderCatPanel();
+  }catch(e){}
+}
+function renderCatPanel(){
+  try{
+    const s=site(); if(!s) return;
+    const cats=effCats(s)||[];
+    const t=document.getElementById('catPanelTitle');
+    if(t) t.textContent=(s.name||'站点')+' · 分类';
+    const list=document.getElementById('catPanelList');
+    if(!list) return;
+    const cur=String(activeCat||'');
+    list.innerHTML=cats.map(c=>{
+      const on=(cur===String(c[0])||cur===String(resolveCat(s,c[0])))?' on':'';
+      return '<button type="button" class="cp-item'+on+'" data-id="'+esc(c[0])+'">'+esc(c[1]||c[0])+'</button>';
+    }).join('');
+    list.querySelectorAll('.cp-item').forEach(b=>{
+      b.onclick=(e)=>{
+        e.stopPropagation();
+        activateCategory(b.dataset.id);
+        closeCatPanel();
+      };
+    });
+    const on=list.querySelector('.cp-item.on');
+    if(on){ try{ on.scrollIntoView({block:'nearest'}); }catch(e2){} }
+  }catch(e){}
+}
+function openCatPanel(){
+  try{
+    renderCatPanel();
+    const p=document.getElementById('catPanel');
+    const m=document.getElementById('catPanelMask');
+    if(p){ p.hidden=false; requestAnimationFrame(()=>p.classList.add('open')); }
+    if(m){ m.hidden=false; requestAnimationFrame(()=>m.classList.add('open')); }
+  }catch(e){}
+}
+function closeCatPanel(){
+  try{
+    const p=document.getElementById('catPanel');
+    const m=document.getElementById('catPanelMask');
+    if(p){ p.classList.remove('open'); p.hidden=true; }
+    if(m){ m.classList.remove('open'); m.hidden=true; }
+  }catch(e){}
+}
+(function bindCatPanel(){
+  const btn=document.getElementById('catPanelBtn');
+  const mask=document.getElementById('catPanelMask');
+  const close=document.getElementById('catPanelClose');
+  if(btn) btn.addEventListener('click', function(e){
+    e.stopPropagation();
+    const p=document.getElementById('catPanel');
+    if(p&&!p.hidden&&p.classList.contains('open')) closeCatPanel();
+    else openCatPanel();
+  });
+  if(mask) mask.addEventListener('click', closeCatPanel);
+  if(close) close.addEventListener('click', closeCatPanel);
+  // Esc 收起（桌面端）
+  document.addEventListener('keydown', function(e){
+    if(e&&e.key==='Escape') closeCatPanel();
+  });
+})();
+
 // 搜索失焦时清掉顶栏 nav-search-open
 (function(){
   document.addEventListener('click', function(e){
@@ -2671,6 +2751,8 @@ function renderChips(){
   if(act) requestAnimationFrame(function(){ centerChipInScroller(act); });
   renderSubChips(s, catGroupOf(s,activeCat));
   bindNavHScrolls();
+  // 分类多的站（XV 等）：顶栏横滑让位给左侧分类面板
+  applyCatPanelMode();
 }
 // 二级分类行：只在当前站源、当前分组有子分类时出现
 function renderSubChips(s,grp){
