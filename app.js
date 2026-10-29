@@ -1861,7 +1861,7 @@ async function _getInner(site,path,timeoutSec=16,quiet=false,opts){
     }
     // 分类/列表路径若完全没有条目结构，视为该镜像不可用，换下一个
     if(/\/vod\/(show|type)|vodshow|vodtype|\/c\//i.test(path)
-       && !/module-item|module-poster-item|stui-vodlist|myui-vodlist|list-item|a\.card|class=\"card\"|card-tt|class=\"item\"|data-date/i.test(h)){
+       && !/module-item|module-poster-item|stui-vodlist|myui-vodlist|list-item|a\.card|class=\"card\"|card-tt|class=\"item\"|data-date|id="video_/i.test(h)){
       throw new Error('列表页无有效内容');
     }
     return{html:h,base,_domain:d}
