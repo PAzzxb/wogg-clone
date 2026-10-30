@@ -1781,6 +1781,11 @@ async function cfReq(url, timeoutSec=20, opts){
     const r=await fetch(target,_init||undefined);
     if(r.ok){ const t2=await r.text(); if(t2) return t2; }
     throw new Error('CF 代理返回空/HTTP '+(r&&r.status));
+  }catch(e){
+    if(/CF 代理返回空/.test(e.message)) throw e;
+    // 代理域名本身不可达（被墙/DNS 失败/连接超时）：给出明确原因，别只抛 "Failed to fetch"
+    const _pd=(_cf||'').replace(/^https?:\/\//,'').split('/')[0];
+    throw new Error('采集代理不可达（'+(_pd||'未配置')+'），请检查网络/代理，或在设置中更换采集代理');
   }finally{clearTimeout(t)}
 }
 let _reqGen=0;   // 请求代际：切源/切分类/搜索时 ++，旧请求回来后不再更新状态栏，防止「卡在加载中」的假象
@@ -11492,7 +11497,7 @@ async function xsiteList(s, cat, pg){
     try{
       const list=await hsexList(sub, parsed.id, pg)||[];
       return list.map(c=>{ c.siteId=c.siteId||'hsex'; c.siteName=c.siteName||'肉视频'; c._land=true; c._rouvid=true; c._hsex=true; return c; });
-    }catch(e){ return []; }
+    }catch(e){ throw new Error('肉视频：'+(e&&e.message||'加载失败')); }
   }
   if(parsed.src==='av591'){
     const sub=SITES.find(x=>x.id==='av591');
@@ -11500,7 +11505,7 @@ async function xsiteList(s, cat, pg){
     try{
       const list=await av591List(sub, parsed.id, pg)||[];
       return list.map(c=>{ c.siteId=c.siteId||'av591'; c.siteName=c.siteName||'591AV'; c._land=true; return c; });
-    }catch(e){ return []; }
+    }catch(e){ throw new Error('591AV：'+(e&&e.message||'加载失败')); }
   }
   if(parsed.src==='okxxx'){
     const sub=SITES.find(x=>x.id==='okxxx');
@@ -11508,7 +11513,7 @@ async function xsiteList(s, cat, pg){
     try{
       const list=await porn91List(sub, parsed.id, pg)||[];
       return list.map(c=>{ c.siteId=c.siteId||'okxxx'; c.siteName=c.siteName||'91Porn'; c._91porn=true; c._land=true; return c; });
-    }catch(e){ return []; }
+    }catch(e){ throw new Error('91Porn：'+(e&&e.message||'加载失败')); }
   }
   if(parsed.src==='bn'){
     const bn=SITES.find(x=>x.id==='badnews');
@@ -11521,14 +11526,14 @@ async function xsiteList(s, cat, pg){
     try{
       const list=await chigua51List(s51, parsed.id, pg)||[];
       return list.map(c=>{ c.siteId=c.siteId||'cg51'; c.siteName=c.siteName||'51吃瓜'; return c; });
-    }catch(e){ return []; }
+    }catch(e){ throw new Error('51吃瓜：'+(e&&e.message||'加载失败')); }
   }
   const cg=SITES.find(x=>x.id==='cg57');
   if(!cg) return [];
   try{
     const list=await chigua57List(cg, parsed.id, pg)||[];
     return list.map(c=>{ c.siteId=c.siteId||'cg57'; c.siteName=c.siteName||'吃瓜'; return c; });
-  }catch(e){ return []; }
+  }catch(e){ throw new Error('吃瓜：'+(e&&e.message||'加载失败')); }
 }
 async function xsiteSearch(s, q){
   // 聚合搜索：HSEX / 591AV / OKXXX / 坏新闻 / 吃瓜
