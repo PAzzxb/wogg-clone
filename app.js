@@ -16001,3 +16001,6 @@ _ensureHome();
   });
   mo.observe(document.body,{attributes:true,subtree:true,attributeFilter:['class']});
 })();
+
+// 加载完成标记：index.html 检测此标记，缺失（jsdelivr 被墙/文件截断语法错）时回落 GitHub Pages 源
+window.__WO_APP_OK__=true;
