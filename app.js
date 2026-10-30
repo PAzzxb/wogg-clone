@@ -1827,8 +1827,21 @@ async function req(url,timeoutSec=16,quiet=false,opts){
   // ② 没有原生桥接（纯浏览器网页）才走这里：先直连
   return await _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec);
 }
+// ===== 直连不通记忆：host -> 最近一次直连失败时间戳（5 分钟 TTL）=====
+// 被墙域名（如 91porn.com）在大陆直连必超时，此前每轮列表/翻页都要空等 8~10 秒才回落采集代理。
+// 记住「直连已证不通」的 host，短期内跳过直连：首轮 3~4 秒出内容，后续立即走代理。
+const _directFailHosts={};
 async function _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec,allowProxy){
   if(allowProxy!==false) allowProxy=true;
+  // 直连不通记忆命中：跳过直连，直接走采集代理（代理也失败则清记忆，回常规直连流程重探）
+  const _dfHost=(function(){try{return new URL(url).host}catch(e){return ''}})();
+  if(_dfHost&&CF_PROXY){
+    const _dfAt=_directFailHosts[_dfHost];
+    if(_dfAt&&Date.now()-_dfAt<300000){
+      try{ return await cfReq(url,timeoutSec,{method:_method,body:_body,headers:_extraHeaders}); }
+      catch(eDf){ delete _directFailHosts[_dfHost]; }
+    }
+  }
   try{
     const ac=new AbortController();const t=setTimeout(()=>ac.abort(),timeoutSec*1000);
     let r;
@@ -1847,6 +1860,8 @@ async function _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec,allowPr
     if(CF_PROXY && _isCfChallenge(dt)) return await cfReq(url,timeoutSec,{method:_method,body:_body,headers:_extraHeaders});
     return dt;
   }catch(e){
+    // 记录直连失败（超时/CORS/网络错误）：后续同 host 请求直接走代理，免去每轮超时等待
+    if(_dfHost) _directFailHosts[_dfHost]=Date.now();
     // 直连被 CORS / 混合内容拦截时，再尝试 CORS 代理（仅浏览器网页场景）
     let lastErr=e.message;
     if(!allowProxy) throw new Error(lastErr||'请求失败');
@@ -6084,7 +6099,7 @@ async function porn91EnsureCnLang(s){
   try{
     const site=s||{id:'okxxx',domains:['https://91porn.com']};
     // 站点默认 English，需 session_language=cn_CN 才返回中文标题
-    await get(site, 'https://91porn.com/index.php', 8, true, {
+    await get(site, 'https://91porn.com/index.php', 3, true, {
       method:'POST',
       headers:{
         'Content-Type':'application/x-www-form-urlencoded',
@@ -6148,7 +6163,8 @@ async function porn91List(s, cat, pg){
   if(!c || c==='okxxx' || c==='index') c='hot';
   let path='/v.php?category='+encodeURIComponent(c)+'&viewtype=basic';
   if(pg>1) path+='&page='+pg;
-  const r=await get(s||{id:'okxxx',domains:['https://91porn.com']}, path, 10, true, {headers:{'Cookie':'language=cn_CN; lang=cn','Accept-Language':'zh-CN,zh;q=0.9'}});
+  // 超时 4s：91porn.com 大陆必被墙，长等只会拖慢首屏；失败即回落采集代理
+  const r=await get(s||{id:'okxxx',domains:['https://91porn.com']}, path, 4, true, {headers:{'Cookie':'language=cn_CN; lang=cn','Accept-Language':'zh-CN,zh;q=0.9'}});
   return porn91ParseList(r&&r.html||'', (r&&r.base)||'https://91porn.com/');
 }
 async function porn91Search(s, q){
@@ -6157,7 +6173,7 @@ async function porn91Search(s, q){
   try{ await porn91EnsureCnLang(s); }catch(e){}
   const path='/search_result.php?search_id='+encodeURIComponent(kw)+'&search_type=search_videos&submit=Search';
   try{
-    const r=await get(s||{id:'okxxx',domains:['https://91porn.com']}, path, 10, true, {headers:{'Cookie':'language=cn_CN; lang=cn','Accept-Language':'zh-CN,zh;q=0.9'}});
+    const r=await get(s||{id:'okxxx',domains:['https://91porn.com']}, path, 4, true, {headers:{'Cookie':'language=cn_CN; lang=cn','Accept-Language':'zh-CN,zh;q=0.9'}});
     const list=porn91ParseList(r&&r.html||'', (r&&r.base)||'https://91porn.com/');
     if(list.length) return list;
   }catch(e){}
