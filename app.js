@@ -1847,11 +1847,22 @@ async function req(url,timeoutSec=16,quiet=false,opts){
 const _directFailHosts={};
 async function _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec,allowProxy){
   if(allowProxy!==false) allowProxy=true;
-  // 直连不通记忆命中：跳过直连，直接走采集代理（代理也失败则清记忆，回常规直连流程重探）
+  // 直连不通记忆命中：先短超时试一次直连（用户可能已开 VPN/换网络），
+  // 直连通了就直接用；不通再走代理，避免「开了 VPN 仍被记忆拦住黑屏」
   const _dfHost=(function(){try{return new URL(url).host}catch(e){return ''}})();
   if(_dfHost&&CF_PROXY){
     const _dfAt=_directFailHosts[_dfHost];
     if(_dfAt&&Date.now()-_dfAt<300000){
+      // 快速试探直连：3 秒超时，通了就用，不再走代理
+      try{
+        const _ac2=new AbortController();const _t2=setTimeout(()=>_ac2.abort(),3000);
+        const _h2=Object.assign({'User-Agent':(window.__woUaForUrl__?window.__woUaForUrl__(url):(window.__WO_NATIVE_UA__||'Mozilla/5.0'))},_extraHeaders);
+        const _r2=await fetch(url,_method==='POST'?{method:'POST',headers:Object.assign({'Content-Type':'application/x-www-form-urlencoded'},_h2),body:_body,signal:_ac2.signal,credentials:'omit'}:{headers:_h2,signal:_ac2.signal,credentials:'omit'});
+        clearTimeout(_t2);
+        const _dt2=await _r2.text();
+        if(_dt2&&_dt2.length>32&&(typeof _isCfChallenge!=='function'||!_isCfChallenge(_dt2))){ delete _directFailHosts[_dfHost]; return _dt2; }
+      }catch(_e2){}
+      // 直连试探失败：走代理
       try{ return await cfReq(url,timeoutSec,{method:_method,body:_body,headers:_extraHeaders}); }
       catch(eDf){ delete _directFailHosts[_dfHost]; }
     }
