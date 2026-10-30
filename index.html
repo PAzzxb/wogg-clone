@@ -13,7 +13,7 @@
   /* 缓存破坏：App 的 WebView 会把 app.js / style.css 长时间缓存住，
      造成「线上已更新、App 里还是旧版」。这里按小时生成版本号注入资源地址，
      保证至少每小时重新拉一次；WO_BUILD_BASE 用于人工发版时兜底 bump。 */
-  window.__WO_BUILD_BASE__='20261030c';
+  window.__WO_BUILD_BASE__='20261030d';
   (function(){
     var d=new Date(), p=function(n){return ('0'+n).slice(-2)};
     window.__WO_BUILD__=window.__WO_BUILD_BASE__+'-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+p(d.getHours());
