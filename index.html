@@ -13,7 +13,7 @@
   /* 缓存破坏：App 的 WebView 会把 app.js / style.css 长时间缓存住，
      造成「线上已更新、App 里还是旧版」。这里按小时生成版本号注入资源地址，
      保证至少每小时重新拉一次；WO_BUILD_BASE 用于人工发版时兜底 bump。 */
-  window.__WO_BUILD_BASE__='20261030d';
+  window.__WO_BUILD_BASE__='20261030e';
   (function(){
     var d=new Date(), p=function(n){return ('0'+n).slice(-2)};
     window.__WO_BUILD__=window.__WO_BUILD_BASE__+'-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+p(d.getHours());
@@ -190,6 +190,9 @@
   </div>
   <div class="cp-list" id="catPanelList"></div>
 </aside>
-  <script>document.write('<script src="app.js?v='+(window.__WO_BUILD__||'20261022c')+'"><\/script>');</script>
+  <!-- app.js 加载：jsdelivr 商业 CDN 为主源（按 commit sha 固定，规避 GitHub Pages CDN 大文件截断导致的白屏）；
+       jsdelivr 不可达时（如大陆网络抖动），__WO_APP_OK__ 标记缺失，自动回落 GitHub Pages 源 -->
+  <script>document.write('<script src="https://cdn.jsdelivr.net/gh/PAzzxb/wogg-clone@5b558dcb0f6eb9df4f6e2050924516e26046325d/app.js?v='+(window.__WO_BUILD__||'x')+'"><\/script>');</script>
+  <script>if(!window.__WO_APP_OK__)document.write('<script src="app.js?v='+(window.__WO_BUILD__||'20261022c')+'"><\/script>');</script>
 </body>
 </html>
