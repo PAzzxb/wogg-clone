@@ -1786,6 +1786,9 @@ async function cfReq(url, timeoutSec=20, opts){
       if(_isCfChallenge(t2)) throw new Error('Cloudflare 拦截：目标站屏蔽了采集节点，暂时无法加载（可稍后重试或在设置中更换采集代理）');
       return t2;
     } }
+    // 非 200 也读 body：rou.video 的 WAF 是 403+挑战页，状态码非 ok 时同样要识别出 CF 盾
+    let _eb=''; try{ _eb=await r.text(); }catch(e2){}
+    if(_isCfChallenge(_eb)) throw new Error('Cloudflare 拦截：目标站屏蔽了采集节点，暂时无法加载（可稍后重试或在设置中更换采集代理）');
     throw new Error('CF 代理返回空/HTTP '+(r&&r.status));
   }catch(e){
     if(/CF 代理返回空|Cloudflare 拦截/.test(e.message)) throw e;
@@ -11489,8 +11492,9 @@ function _xsiteParseCat(cat){
 }
 async function _xsiteBnList(bn, cat, pg){
   if(!bn) return [];
+  // 超时 4s：bad.news 大陆直连必超时，长等只会拖慢首屏；失败即回落采集代理
   const path=catUrl(bn, cat||'sort-hot', pg);
-  const r=await get(bn, path);
+  const r=await get(bn, path, 4, true);
   const d=doc(r.html||'');
   const els=[...d.querySelectorAll(bn.listSelector||'.link.show')];
   return els.map(e=>cardFrom(e, r.base||(bn.domains&&bn.domains[0])||'https://bad.news', bn)).filter(x=>x&&x.href&&x.title).slice(0,60);
