@@ -1883,6 +1883,18 @@ async function _reqViaBrowser(url,_method,_body,_extraHeaders,timeoutSec,allowPr
     if(CF_PROXY){
       try{ return await cfReq(url,timeoutSec,{method:_method,body:_body,headers:_extraHeaders}); }
       catch(err){ lastErr=err.message; }
+      // CF 代理也失败（如 91porn 被 CF 盾拦截，简单代理绕不动）：回落到 CORS 代理
+      // allorigins/corsproxy.io 这类纯 HTTP 代抓对部分站源有效，别直接抛错
+      for(const mk of CORS_PROXIES){
+        try{
+          const _ac=new AbortController(); const _pt=setTimeout(()=>_ac.abort(),6000);
+          let r;
+          try{ r=await fetch(mk(url),{signal:_ac.signal}); }finally{ clearTimeout(_pt); }
+          if(r.ok){let t=await r.text();
+          if(CF_PROXY && _isCfChallenge(t)) return await cfReq(url,timeoutSec,{method:_method,body:_body,headers:_extraHeaders});
+          if(t)return t}lastErr='HTTP '+r.status}
+        catch(err){lastErr=err.message}
+      }
       throw new Error(lastErr||'采集代理请求失败');
     }
     for(const mk of CORS_PROXIES){
