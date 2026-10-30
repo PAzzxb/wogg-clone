@@ -15140,7 +15140,36 @@ async function playPanSearch(p){
     try{ await fm.play(playUrl, filmTitle, _imgFields); return; }catch(e){}
     try{ await fm.play(playUrl, filmTitle); return; }catch(e){}
   }
+  // 无原生桥接（浏览器网页）：先尝试唤起已安装的 Fongmi App，
+  // 唤不起再跳转网盘网页
+  if(!fm){
+    if(await _tryFongmiScheme(p.url, filmTitle, pic)) return;
+  }
   location.href=p.url;
+}
+
+// 浏览器环境唤起 Fongmi App：尝试多种 scheme，任一成功即返回 true
+async function _tryFongmiScheme(url, title, pic){
+  const enc=encodeURIComponent;
+  const schemes=[
+    'fongmi://play?url='+enc(url)+'&title='+enc(title)+(pic?'&pic='+enc(pic):''),
+    'fm://play?url='+enc(url)+'&title='+enc(title),
+    'fongmi://'+url,
+    'fm://'+url,
+  ];
+  for(const s of schemes){
+    try{
+      const a=document.createElement('a');
+      a.href=s;a.style.display='none';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }catch(e){ continue; }
+    // 给 600ms 让浏览器尝试跳转 App；若页面未被隐藏/切前台则视为失败
+    await new Promise(r=>setTimeout(r,600));
+    if(document.hidden||document.visibilityState==='hidden') return true;
+  }
+  return false;
 }
 
 let _panToken=0;
