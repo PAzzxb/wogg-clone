@@ -1723,8 +1723,9 @@ const CORS_PROXIES=[
 const DEFAULT_CF_PROXY='https://xv.noyu.ccwu.cc/?url=';
 let CF_PROXY=DEFAULT_CF_PROXY;
 try{ const _c=localStorage.getItem('wo_cf_proxy'); if(_c!==null) CF_PROXY=_c.trim(); }catch(e){}
-// CF 挑战页识别：命中即说明拿到了 Cloudflare 五秒盾而非真内容
-function _isCfChallenge(t){ return /just a moment|cf-browser|access denied|<title>\s*Just a moment/i.test(t||''); }
+// CF 挑战页识别：命中即说明拿到了 Cloudflare 五秒盾/WAF 拦截页而非真内容
+// 覆盖：五秒盾(Just a moment)、浏览器校验(cf-browser)、按 IP 拉黑(Attention Required! | Cloudflare)、Access denied
+function _isCfChallenge(t){ return /just a moment|cf-browser|access denied|attention required!?\s*\|?\s*cloudflare|<title>\s*Just a moment/i.test(t||''); }
 // 把任意 https URL 经「?url= 型采集代理」输出（图片/视频等二进制资源用，<img>/<video> 可直接加载）。
 // 仅当 CF_PROXY 为简单代理形态时可用；FlareSolverr（/v1）不能代理二进制，返回原值。
 function _cfGateUrl(url){
@@ -1779,10 +1780,15 @@ async function cfReq(url, timeoutSec=20, opts){
   const ac=new AbortController();const t=setTimeout(()=>ac.abort(),to);
   try{
     const r=await fetch(target,_init||undefined);
-    if(r.ok){ const t2=await r.text(); if(t2) return t2; }
+    if(r.ok){ const t2=await r.text(); if(t2){
+      // 代理拿回来的是 CF 盾/WAF 拦截页（如 rou.video 按 IP 拉黑、bad.news 五秒盾）：
+      // 简单代理解不动盾，别把挑战页当真内容返回（下游 JSON.parse/选择器解析只会得到空列表，表现为「暂无内容」）
+      if(_isCfChallenge(t2)) throw new Error('Cloudflare 拦截：目标站屏蔽了采集节点，暂时无法加载（可稍后重试或在设置中更换采集代理）');
+      return t2;
+    } }
     throw new Error('CF 代理返回空/HTTP '+(r&&r.status));
   }catch(e){
-    if(/CF 代理返回空/.test(e.message)) throw e;
+    if(/CF 代理返回空|Cloudflare 拦截/.test(e.message)) throw e;
     // 代理域名本身不可达（被墙/DNS 失败/连接超时）：给出明确原因，别只抛 "Failed to fetch"
     const _pd=(_cf||'').replace(/^https?:\/\//,'').split('/')[0];
     throw new Error('采集代理不可达（'+(_pd||'未配置')+'），请检查网络/代理，或在设置中更换采集代理');
@@ -7245,7 +7251,9 @@ async function hsexList(s, cat, pg){
     return rouvidParseJsonList(arr);
   }catch(e){
     try{console.warn('[rouvid list]',e)}catch(_){}
-    return [];
+    // 透传真实错误（如 Cloudflare 拦截/采集代理不可达）：让 UI 显示原因而非「暂无内容」
+    // xsiteList 的 hsex 分支会再包一层「肉视频：」前缀
+    throw e;
   }
 }
 async function hsexSearch(s, q){
@@ -11481,13 +11489,11 @@ function _xsiteParseCat(cat){
 }
 async function _xsiteBnList(bn, cat, pg){
   if(!bn) return [];
-  try{
-    const path=catUrl(bn, cat||'sort-hot', pg);
-    const r=await get(bn, path);
-    const d=doc(r.html||'');
-    const els=[...d.querySelectorAll(bn.listSelector||'.link.show')];
-    return els.map(e=>cardFrom(e, r.base||(bn.domains&&bn.domains[0])||'https://bad.news', bn)).filter(x=>x&&x.href&&x.title).slice(0,60);
-  }catch(e){ return []; }
+  const path=catUrl(bn, cat||'sort-hot', pg);
+  const r=await get(bn, path);
+  const d=doc(r.html||'');
+  const els=[...d.querySelectorAll(bn.listSelector||'.link.show')];
+  return els.map(e=>cardFrom(e, r.base||(bn.domains&&bn.domains[0])||'https://bad.news', bn)).filter(x=>x&&x.href&&x.title).slice(0,60);
 }
 async function xsiteList(s, cat, pg){
   const parsed=_xsiteParseCat(cat);
@@ -11517,8 +11523,10 @@ async function xsiteList(s, cat, pg){
   }
   if(parsed.src==='bn'){
     const bn=SITES.find(x=>x.id==='badnews');
-    const list=await _xsiteBnList(bn, parsed.id, pg);
-    return (list||[]).map(c=>{ c.siteId=c.siteId||'badnews'; c.siteName=c.siteName||'坏新闻'; return c; });
+    try{
+      const list=await _xsiteBnList(bn, parsed.id, pg);
+      return (list||[]).map(c=>{ c.siteId=c.siteId||'badnews'; c.siteName=c.siteName||'坏新闻'; return c; });
+    }catch(e){ throw new Error('坏新闻：'+(e&&e.message||'加载失败')); }
   }
   if(parsed.src==='cg51'){
     const s51=SITES.find(x=>x.id==='cg51');
