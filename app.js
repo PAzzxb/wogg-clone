@@ -11351,13 +11351,11 @@ function chigua57GateUrl(url, accept){
       return fm.res(url, { headers: h });
     }
   }catch(e){}
-  // 浏览器直连无 fm 桥接时，chigua.media CDN 有 Referer 防盗链（无 Referer 返回 403），
-  // 直连 <img> 必挂。走采集代理（CF_PROXY）透传 Referer/UA 才能拿到真图。
+  // 浏览器直连时，chigua.media CDN 有 Referer 防盗链（Referer 不是 57cg4.com 返回 403）。
+  // 必须走专用代理透传 Referer: https://57cg4.com/ 才能拿到真图。
+  // 代理代码见仓库 worker/chigua57.js，部署到 Cloudflare Workers 即可使用。
   try{
-    if(typeof _cfGateUrl==='function'){
-      const proxied=_cfGateUrl(url);
-      if(proxied && proxied!==url) return proxied;
-    }
+    return 'https://chigua57-proxy.workers.dev/?url='+encodeURIComponent(url);
   }catch(e){}
   return url;
 }
