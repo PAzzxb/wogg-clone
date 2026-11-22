@@ -11351,6 +11351,14 @@ function chigua57GateUrl(url, accept){
       return fm.res(url, { headers: h });
     }
   }catch(e){}
+  // 浏览器直连无 fm 桥接时，chigua.media CDN 有 Referer 防盗链（无 Referer 返回 403），
+  // 直连 <img> 必挂。走采集代理（CF_PROXY）透传 Referer/UA 才能拿到真图。
+  try{
+    if(typeof _cfGateUrl==='function'){
+      const proxied=_cfGateUrl(url);
+      if(proxied && proxied!==url) return proxied;
+    }
+  }catch(e){}
   return url;
 }
 function isChigua57Item(v,p){
