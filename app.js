@@ -12478,11 +12478,12 @@ function chigua51ParseCards(html, s, base){
     const id=am[2];
     if(!id||seen.has(id)) continue;
     seen.add(id);
-    // 封面提取：站点 2610 改版后封面从 loadBannerDirect('URL') 改为统一声明式背景加载 z-bg-loader-url="URL"
-    // （image.20260416.js 的 z-bg-loader-url；旧模板仍走 loadBannerDirect，两者都兼容）
+    // 封面提取：站点 2610 改版后封面从 loadBannerDirect('URL') 改为声明式背景加载，
+    // 真实帖卡用 z-bg-loader-url，广告/部分帖卡用 x-bg-loader-url；旧模板仍走 loadBannerDirect，全部兼容
     let cm=blk.match(/z-bg-loader-url="([^"]+)"/);
+    if(!cm) cm=blk.match(/x-bg-loader-url="([^"]+)"/);
     if(!cm) cm=blk.match(/loadBannerDirect\(\s*'([^']+)'/);
-    if(cm && /\.gif(\?|#|$)/i.test(cm[1])) cm=null;   // 广告 gif 封面（x-bg 常见）不作为真实封面
+    if(cm && /\.gif(\?|#|$)/i.test(cm[1])) cm=null;   // 广告 gif 封面不作为真实封面
     let title='';
     const tm=blk.match(/<h2 class="post-card-title"[^>]*>([\s\S]*?)<\/h2>/i);
     if(tm) title=chigua51StripTags(tm[1].replace(/<div class="wrap">[\s\S]*?<\/div>/gi,''));
@@ -12644,12 +12645,12 @@ function chigua51CleanBody(html, base){
   }
   return outHtml;
 }
-/* 提取正文块全部真图 URL（z-image-loader-url 为本站真图唯一特征；旧模板用 data-xkrkllgl，两者都兼容；
+/* 提取正文块全部真图 URL（z-image-loader-url / image-loader-url 为本站真图特征；旧模板用 data-xkrkllgl，全部兼容；
  * 只取 post-content 内，排除帖外杂图），供底部图区网格展示 */
 function chigua51ExtractBodyImgs(html, base){
   const out=[]; const seen=new Set();
-  // 优先新格式 z-image-loader-url，回退旧格式 data-xkrkllgl
-  const re=/<img\b[^>]*(?:z-image-loader-url|data-xkrkllgl)="([^"]+)"[^>]*>/gi;
+  // 优先新格式 z-image-loader-url / image-loader-url，回退旧格式 data-xkrkllgl
+  const re=/<img\b[^>]*(?:z-image-loader-url|image-loader-url|data-xkrkllgl)="([^"]+)"[^>]*>/gi;
   let m;
   const scope=chigua51PostContentSlice(html)||String(html||'');
   while((m=re.exec(scope))){
