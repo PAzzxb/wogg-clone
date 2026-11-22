@@ -11352,11 +11352,8 @@ function chigua57GateUrl(url, accept){
     }
   }catch(e){}
   // 浏览器直连时，chigua.media CDN 有 Referer 防盗链（Referer 不是 57cg4.com 返回 403）。
-  // 必须走专用代理透传 Referer: https://57cg4.com/ 才能拿到真图。
-  // 代理代码见仓库 worker/chigua57.js，部署到 Cloudflare Workers 即可使用。
-  try{
-    return 'https://chigua57-proxy.workers.dev/?url='+encodeURIComponent(url);
-  }catch(e){}
+  // 直连 <img> 必挂。需通过 fetch+Blob 方式加载（绕过 <img> 的 Referer 策略），
+  // 由 chigua57HydrateCovers 在 fm 桥接不可用时走 fetch+arraybuffer 兜底。
   return url;
 }
 function isChigua57Item(v,p){
@@ -11425,6 +11422,22 @@ async function chigua57HydrateCovers(root){
             img.src=bu;
             ok();
           }
+        }
+        // 浏览器直连无 fm 桥接：fetch() 可以自定义 Referer（<img> 不行），
+        // 拿到 ArrayBuffer 转 Blob URL 后赋给 img.src，绕过 CDN 防盗链。
+        if(!fm){
+          if(typeof _cg57BlobCache!=='undefined' && _cg57BlobCache[raw]){ img.src=_cg57BlobCache[raw]; ok(); continue; }
+          try{
+            const fr=await fetch(raw,{headers:chigua57MediaHeaders()});
+            if(fr.ok){
+              const ab=await fr.arrayBuffer();
+              const blob=new Blob([ab],{type:'image/jpeg'});
+              const bu=URL.createObjectURL(blob);
+              try{ _cg57BlobCache[raw]=bu; }catch(e){}
+              img.src=bu;
+              ok();
+            }
+          }catch(eBf){}
         }
       }catch(e){}
     }
